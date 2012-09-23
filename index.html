@@ -8,6 +8,9 @@
     font-family: Courier;
     margin: 0; paddig: 0;
   }
+  .cursor {
+    background-color: lightblue;
+  }
 </style>
 <script src="underscore-min.js"></script>
 <script src="zepto.min.js"></script>
@@ -16,27 +19,27 @@
   <div id="w">
   </div>
   <div id="k">
-    <label>
-      <input type="checkbox">
-      scroll
-    </label>
     <br />
-    <input type="text" id="i" style="font-size: 16px"/>
     <div id="notes"></div>
   </div>
 </body>
-<script>
+<script id="s">//stuff
   setTimeout(function () { window.scrollTo(0, 1) }, 100)
 
+  var mode = "scroll"
   var line  = []
   var lines = [line]
+  var y_index = 0
+  var x_index = 0
   var x_offset = 0
   var y_offset = 0
   var screen_width = 320
-  viewport_x = 16
+  var x_viewport = 16
 
-  var screen_height = 160 + 80
-  viewport_y = 8
+  var screen_height = 360
+  var y_viewport = 10
+  var chr_width = (screen_width / x_viewport)
+  var chr_height = (screen_height / y_viewport)
 
   font_size = 35
   w = $("#w")
@@ -45,18 +48,17 @@
   var cells = []
   var setup_screen = function () {
     cells = []
-    for (var y = 0; y < viewport_y; y++) {
-      for (var x = 0; x < viewport_x; x++) {
+    for (var y = 0; y < y_viewport; y++) {
+      for (var x = 0; x < x_viewport; x++) {
         var chr = $("<div>");
-        var width = (screen_width / viewport_x)
-        var height = (screen_height / viewport_y)
         chr.css({
-          "left": x*width,
-          "top": y*height,
+          "left": x*chr_width,
+          "top": y*chr_height,
           "position": "absolute",
-          "width":  width + "px",
-          "height":  height + "px",
-          "font-size":  font_size + "px"
+          "width":  chr_width + "px",
+          "height":  chr_height + "px",
+          "font-size":  font_size + "px",
+          "text-align": "center"
         })
         chr.attr("id", "c" + x + "_" + y)
         cells.push(chr)
@@ -67,9 +69,10 @@
   }
 
   var clear = function () {
-    for (var y = 0; y < viewport_y; y++) {
-      for (var x = 0; x < viewport_x; x++) {
-        var cell = cells[viewport_x * y + x]
+    $(".cursor").removeClass("cursor") //is this slow?
+    for (var y = 0; y < y_viewport; y++) {
+      for (var x = 0; x < x_viewport; x++) {
+        var cell = cells[x_viewport * y + x]
         cell.text("")
       }
     }
@@ -78,13 +81,14 @@
   var render = function (x_offset, y_offset) {
     notes.text(x_offset + " " + y_offset)
     clear()
+    $("#c" + (-x_offset + x_index) + "_" + (-y_offset + y_index)).addClass("cursor");
     var c_line
-    for (var y = y_offset; y < y_offset + viewport_y; y++) {
+    for (var y = y_offset; y < y_offset + y_viewport; y++) {
       c_line = lines[y];
       if (!c_line) continue;
-      for (var x = x_offset; x < x_offset + viewport_x; x++) {
+      for (var x = x_offset; x < x_offset + x_viewport; x++) {
         var c_chr = c_line[x];
-        var cell = cells[viewport_x * (y - y_offset) + (x - x_offset)]
+        var cell = cells[x_viewport * (y - y_offset) + (x - x_offset)]
         cell.text(c_chr)
       }
     }
@@ -109,8 +113,10 @@
   var touch = {}
   var touchstart = function (e) {
     e.preventDefault()
-    touch.y1 = e.touches[0].pageY
-    touch.x1 = e.touches[0].pageX
+    if (mode == "scroll") {
+      touch.y1 = e.touches[0].pageY
+      touch.x1 = e.touches[0].pageX
+    }
   }
      
   //https://github.com/drewlesueur/mobile/blob/server/public/index.js
@@ -118,20 +124,80 @@
   var move_factor = function (z) {
     return -1 * parseInt(z / 10) 
   }
+  
+  var last_quadrant = null;
 
+  var quadrant_map = {
+    lefttop: "a",
+    leftmiddle: "c",
+    leftbotton: "e",
+    righttop: "b",
+    rightmiddle: "d",
+    rightbottom: "f",
+  }
+
+  var get_quadrant = function (x, y) {
+    // ab
+    // cd
+    // ef
+    var x_full = screen.width
+    var x_one_half = x_full / 2
+
+    var y_full = screen.height
+    var y_one_third = screen.height / 3
+    var y_two_thirds = y_one_third * 2
+    var x_place, y_place;
+
+    if (x < x_one_half)  x_place = "left";
+    else x_place = "right";
+
+    if (y < y_one_third)  y_place = "top";
+    else if (y < y_two_thirds)  y_place = "middle";
+    else y_place = "bottom";
+    return quadrant_map[x_place + y_place]
+  }
+
+  var quadtrant_path = []
   var touchmove = function  (e) {
-    touch.y2 = e.touches[0].pageY
-    touch.x2 = e.touches[0].pageX
-    var temp_x_offset = (x_offset + touch.x2 - touch.x1)
-    var temp_y_offset = (y_offset + touch.y2 - touch.y1)
-    render(move_factor(temp_x_offset), move_factor(temp_y_offset))   
+    if (mode == "scroll") {
+      touch.y2 = e.touches[0].pageY
+      touch.x2 = e.touches[0].pageX
+      var temp_x_offset = (x_offset + touch.x2 - touch.x1)
+      var temp_y_offset = (y_offset + touch.y2 - touch.y1)
+      render(move_factor(temp_x_offset), move_factor(temp_y_offset))   
+    } else if (mode == "letters") {
+      var quadrant = get_quadrant(e.touches[0].pageX, e.touches[0].pageY); 
+      if (quadrant != last_quadrant) {
+        quadrant_path.push(quadrant) 
+      }
+
+      last_quadrant = quadrant;
+    }
 
     e.preventDefault()
   }
 
+  var input_letter = function (quadrant_path) {
+  
+  }
+
   var touchend = function (e) {
-    x_offset = (x_offset + touch.x2 - touch.x1)
-    y_offset = (y_offset + touch.y2 - touch.y1)
+    if (mode == "scroll") {
+      x_offset = (x_offset + touch.x2 - touch.x1)
+      y_offset = (y_offset + touch.y2 - touch.y1)
+      if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
+        mode = "letters"
+        y_index = e.touches[0].pageY / chr_height
+        x_index = e.touches[0].pageX / chr_width
+        render()
+      }
+    } else if (mode == "letters") {
+      if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
+        mode = "scroll"
+      } else {
+        input_letter(quadrant_path) 
+     }
+    }
   } 
 
   $(document).ready(function () {
@@ -142,7 +208,7 @@
 
 
 
-  var code = "Participate in the world's largest photo competition and help improve Wikipedia!\nAterciopelados\nFrom Wikipedia, the free encyclopedia\nAterciopelados\nOrigin Bogotá, Cundinamarca, Colombia\nGenres  Rock en español, Latin pop\nYears active  1992.present\nLabels  Warner Music, Sony BMG, Nacional Records\nAssociated acts Delia y Los Aminoácidos\nWebsite  Aterciopelados\nMembers\nAndrea Echeverri\nHector Buitrago\nAterciopelados (English: The Velvety), also referred to as los Aterciopelados on some albums and other promotional materials, are a rock band from Colombia. Led by Andrea Echeverri and Héctor Buitrago, they have been one of the first rock bands from Colombia to gain international notice and they are among the country's top groups. Their music fuses rock with a variety of Colombian and Latin American musical traditions. 'Time magazine has written, \"Aterciopelados's true skill lies in its ability to take north-of-the-border musical styles.and breathe new life into them, all while giving them a distinctly Colombian sheen.\" [1]\n\nAdditionally, Aterciopelados engages audiences all over the world with their socially conscious message. Honored by the United Nations for their work denouncing violence in Colombia, Aterciopelados speaks out about myriad issues including political injustice, women's rights, and environmental destruction. The group has also received numerous awards, such as the Latin Grammy Award for Best Alternative Album in 2007, for Oye (Nacional Records).[2]\n\nIn October 2008, Aterciopelados released a new studio album, Rio, on Nacional Records. The album received rave reviews from publications like Rolling Stone,[3] the Washington Post,[4] Billboard,[5] and from NPR's \"All Things Considered.\" [6] As Vibe Magazine said, \"For Aterciopelados, maturity has become a form of liberation.\" [7] The group toured United States in April 2009 to support Rio.[8]\n\nContents  [hide] \n1 History\n2 Music and Albums\n3 Solo albums\n4 Projects\n4.1 Referendum for Water in Colombia\n4.2 Amnesty International\n4.3 Destierro y Reparación\n5 Recognitions\n6 Discography\n7 Quotes\n8 References\n9 Footnotes\n10 External links\n[edit]History\n\nEssentially a collaboration between vocalist/guitarist Andrea Echeverri and bassist/arranger Héctor Buitrago, Aterciopelados has recorded eight albums since they originally teamed up in Bogotá, Colombia in the early 1990s as \"Delia y los Aminoácidos\". \"Héctor was an essential revelation in my personal and musical life\", said Andrea. \"He brought new aesthetics, unsuspected rebellion, and truckloads of music.\" [9] Buitrago came from a hardcore rock background, heading up a group called La Pestilencia, while Echeverri had been drawn into the fledgling scene through art school friends. \"When I was young I listened to boogaloo by Richie Ray and later stuff like Led Zeppelin, Deep Purple, and Yes\", said Héctor. \"The first time I bought a bass guitar, I'd never had one in my hands before. I began to write songs by ear.\" [9] Héctor and Andrea went on to open one of Bogotá's only rock clubs, and their relationship is one of Latin rock's most successful artistic partnerships.\n\n[edit]Music and Albums\n\n\nThis section reads like a review rather than an encyclopedic description of the subject. Please help improve this article to make it neutral in tone and meet Wikipedia's quality standards. (March 2008)\nAterciopelados' first album, Con El Corazón en la Mano (With my Heart in my Hand), features crashing, distorted guitars and a loud punk drumbeat.\n\nWith their second album, El Dorado (The Golden One), Aterciopelados began to expand their horizons, including traditional llanera rhythms of the Colombian countryside as well as the rock.bolero sound of their first big hit, \"Bolero Falaz.\" \"At first what we were doing was very elementary\", said Andrea. \"But since we've played out a lot, learned to compose, and made a few records, even though we haven't had a lot of formal training in music, we've just learned how to develop. We've done it in a very instinctive way, but I think it's very valid.\"[citation needed] The hit song \"Bolero Falaz\" not only had a strong rock-ballad feel, but it showcased Andrea's powerfully seductive voice, one influenced by her mother, who sang boleros, rancheras, and tangos, and the great legends of nueva canción, Iike Joan Manuel Serrat, Mercedes Sosa, and Pablo Milanés. The song broke the band on MTV Latin America and made them stars all over Latin America.\n\nTheir third album, La Pipa de la Paz (The Peace Pipe), was recorded in London with legendary Roxy Music guitarist Phil Manzanera producing. The album's signature songs, \"Cosita Seria\", \"Chica Difícil\", and \"Baracunatana\" were hard-driving Latin rock classics that defined Echeverri's coy, new-feminist attitude by teasing macho men. After releasing La Pipa de la Paz, Aterciopelados was able to tour in the U.S., recording an MTV Unplugged appearance in early 1997.\n\nThe following year Caribe Atómico (Atomic Caribbean), which was recorded in Manhattan with guest appearances by guitarists Arto Lindsay and Marc Ribot, further expanded Aterciopelados' sound into the world of electronica.\n\nGozo Poderoso (Powerful Joy), their fifth album, is a melodic, moody manifesto for the vibrantly eclectic Latin alternative movement. It is world music for a new world. Recorded in Bogotá and produced by Héctor Buitrago, this album led the way to independence and development of their own true sound. Following the album's release, Aterciopelados won a Latin Grammy award for Best Rock Group.[2]\n\nA couple of years later came Evolución, a collection of greatest hits.\n\nIn 1996, Aterciopelados performed \"Una Hoja, Una Raiz (One Leaf, One Root)\" along with Diego Frenkel and Laurie Anderson for the AIDS benefit album Silencio=Muerte: Red Hot + Latin produced by the Red Hot Organization.\n\nIn 2006, Aterciopelados released Oye (Listen) (Nacional Records), a return to the more organic, rock sound reminiscent of their earlier work on albums like La Pipa de la Paz. Produced by Héctor Buitrago and mixed by Thom Russo (Johnny Cash, Juanes, Kinky and Illya Kuryaki), the album's first single, \"Complemento\", is an upbeat declaration of love from someone who has found her soulmate; the person who complements her. The album also features Aterciopelados' trademark social and political commentary on songs like \"Don Dinero\" (\"Mr. Money\"), which questions the idea of money as the solution to all problems, and \"Oye Mujer\" (\"Woman, Listen\") which asks of women, \"Are you a human being or the erotic fantasy of some guy?\" The band continues to win over audiences around the globe playing shows in Mexico, Central and South America, Europe and the U.S.\n\nAterciopelados' single and video \"Canción Protesta\" (\"Protest Song\") from the album Oye continues to make waves for its outspoken social and political commentary against war and injustice. The video features the group using guitars fashioned out of former machine guns . the special guitars were given to Aterciopelados by the United Nations in support of its efforts to take guns off the streets of Colombia.\n\nOn October 21, 2008, Aterciopelados released the album Rio (River) on Nacional Records, aggressively building upon the creative momentum of Oye. The album was recorded in Bogotá and mixed by Héctor Castillo (Brazilian Girls, David Bowie, Gustavo Cerati) in New York City. It is an impassioned, socially conscious record with the group's signature organic rock sound. The album's opener and title track is a call to action that finds Aterciopelados at a new level of creativity and musicality. It coincides with a proposed Colombian constitutional referendum that declares that access to clean drinking water is a fundamental right for all Colombians and provides for maintenance and preservation rights. \"Musically and lyrically, the track 'Rio' is unlike any previous Aterciopelados song\", Echeverri says. \"I'm even singing in a different way than in the past. With this one, we reached an entirely new place.\" [10]\n\nIn \"Bandera\" (\"Flag\"), Aterciopelados speak out on immigration, another issue close to home. \"We have toured across the world many times, yet every time, certain countries give us so much trouble when entering\", Echeverri explains. \"My problems with traveling are so small compared to others across the world but I thought I could give all these people a voice.\" [10] The album's guests range from rapper Gloria \"Goyo\" Martínez (of Colombian hip hop act Choc Quib Town) on \"28\", to the Andean group Kapary Walka on \"Madre\" and \"Aguita\", and even include Echeverri's daughter on \"Ataque de Risa.\" Aterciopelados will do an extensive tour [8] of the United States in April 2009 in support of Rio.\n\n[edit]Solo albums\n\nIn addition to their many albums as \"Aterciopelados\", in 2005 and 2006 Echeverri and Buitrago made individual albums, Echeverri's self-titled Andrea Echeverri and Buitrago's Connector. Andrea Echeverri is centered around Echeverri's experiences being pregnant, giving birth, nursing, and loving.[11] Connector, which translates both as \"with Héctor\" and \"connector\", connects musicians, ideas, paths, and results in a potent inner perspective of contemporary spirituality. It features several guest artists including Echeverri, Alex Ubago and Julieta Venegas [12]\n\n[edit]Projects\n\n[edit]Referendum for Water in Colombia\nAterciopelados. album Rio, released October 21, 2008, coincides with a proposed Colombian constitutional referendum that declares that access to water is a fundamental right for all Colombians and provides for maintenance and preservation rights. \"When I was growing up, the Bogotá River was considered a mythic and iconic place, and now it's a tiny stream,\" says Echeverri.[10] With Rio, Aterciopelados takes an increasingly forceful stand on the environment. Buitrago notes, \"While on previous albums, we may have simply declared many of the world's problems, we now strive to work in a more active way. In this case, it is with the recovery of Bogotá's river, as it is one of the most polluted rivers in the world.\"[10]\n\nEcheverri sings that, \"The waters of the river come running, singing / They go through the city dreaming to be clean, to be clear.\" This theme is carried throughout the album. In the song 'Aguita' (.Water.), Echeverri sings that \"the water belongs to everyone / Not to the highest bidder.\" In August, the band promoted awareness of the issue by traveling down the Bogotá River gathering signatures for the referendum. By September 15, over two million signatures had been collected, propelling the referendum to its next phase of the lengthy process.[13]\n\n[edit]Amnesty International\nAterciopelados have teamed up with Amnesty International and Link TV for a human rights project featuring a re-worked version of \"Cancion Protesta,\" the hit single from their 2006 album, Oye. The song and music video will commemorate the 60th anniversary of the Universal Declaration of Human Rights. It was re-written to address issues of human rights and is now titled \"The Price of Silence.\" The video will take place in the United Nations General Assembly (the United Nations has granted unprecedented access to the General Assembly for this project). Other artists involved include Stephen Marley (Jamaica), Gilberto Gil (Brazil), Angélique Kidjo (Benin), Yerba Buena (PanLatin), Julieta Venegas (Mexico), Emmanuel Jal (Sudan), Hugh Masekela (South Africa) and Rachid Taha (France/Algeria).\n\n[edit]Destierro y Reparación\nIn Colombia, Aterciopelados is involved with the Destierro y Reparacion (Displacement and Reparations) project, which addresses the issue of displacement of native peoples . a huge issue in Colombia as well as many parts of the world.[14] Promoted by the Museum of Antioquía, its goal is to generate social conscience concerning the dimension and implications of the forced displacement phenomenon as a reality affecting everyone and weakening social stability.[15] Additionally, the project aims to identify possible methods and forms of reparation that would insure the application of fundamental rights that would include the recuperation of the culture of the affected communities. The project features discussions, workshops, exhibits and concerts and includes the participation of more than 20 institutions. Aterciopelados contributed the song \"Errante Diamante\" (Wandering Diamond) in support of the project.\n\n[edit]Recognitions\n\nIn 1997 and 1998, they received Grammy nominations.[citation needed]\n\nAterciopelados won a Latin Grammy award in 2001 following the release of their album Gozo Poderoso for Best Rock Group.[2]\n\nIn 2001, Aterciopelados was recognized by the writers of Time magazine as one of the top 10 contemporary global bands (those bands located outside of the United States.) The list included U2 and the Rolling Stones.[16]\n\nIn 2007 they won the Latin Grammy award for Best Alternative Album for Oye. They had received two Latin Grammy nominations that year, including Best Alternative Album for Oye (Nacional Records) and Best Alternative Song for the single \"Complemento.\" [2]\n\nOye also won the group a Premio Lo Nuestro award in 2008 for Album of the Year.[17]\n\n[edit]Discography\n\n1994 - Con el Corazón en la Mano\n1995 - El Dorado\n1997 - La Pipa de la Paz\n1998 - Caribe Atómico\n2001 - Gozo Poderoso\n2002 - Evolución\n2006 - Oye\n2008 - Río\n[edit]Quotes\n\n\"We're opposed to the cliche about rockers, that all the songs sound the same, the poses and the lyrics . we have been inspired by all of world music, by rock, by electronica, and especially Latin American popular music, which hasn't been difficult because those were the sounds that we grew up listening to...\" .Héctor Buitrago of Aterciopelados.[9]\n\"If we are invited to a worthy cause, we are there. Only by respecting Mother Earth and the rights of everyone can the world truly live in harmony.\" .Andrea Echeverri of Aterciopelados.[18]\n[edit]References\n\n\"Aterciopelados Nominated for Two Latin Grammy Awards\" (Press release). Nacional Records. August 2006.\n\n\"Aterciopelados Biography: Contemporary Musicians (Enotes.com)\". Retrieved 2008-01-08.\n\n\"Aterciopelado telúrico (Semana.com)\". Retrieved 2008-01-08.\n\n\"Héctor conexión, Héctor mensajero (visionchamanica.com)\". Archived from the original on 25 January 2008. Retrieved 2008-01-08.\n\n\"The National Geographic Music Interview: Aterciopelados\". Retrieved 2008-12-01.\n\n\"Aterciopelados discuss the new album \"Rio\"\" (Video Interview). Retrieved 2008-12-08.\n\n[edit]Footnotes\n\n^ Miranda, Carolina (2006-10-27). \"Colombia's Hottest Rock Band\". Time. Retrieved 2010-04-25.\n^ a b c d http://www.grammy.com/Latin/Winners_Search/Results.aspx\n^ http://www.rollingstone.com/reviews/album/23321366/review/23589102/rio\n^ \"RECORDINGS Quick Spins\". The Washington Post. 2008-10-21. Retrieved 2010-04-25.\n^ http://www.billboard.biz/bbbiz/content_display/magazine/reviews/albums/e3ifcb24c059ef1f1a6d7e2b026bcd5324a\n^ http://www.npr.org/templates/story/story.php?storyId=96222642\n^ http://julioenriquez.blogspot.com/2008/08/aterciopelados-ok-so-today-is-rock-en.html\n^ a b ATERCIOPELADOS ANNOUNCE EXTENSIVE SPRING 09 TOUR ACROSS THE U.S. http://blogs.myspace.com/index.cfm?fuseaction=blog.view&friendID=38193715&blogID=468131985\n^ a b c Nacional Records (August 2006). \"Aterciopelados Nominated for Two Latin Grammy Awards\". Press release. Retrieved on November 2007.\n^ a b c d Aterciopelados to Release New Studio Album Rio October 21 on Nacional Records. Press release. Retrieved on October 2008.\n^ http://www.amazon.com/dp/B0007CYEXK\n^ http://www.amazon.com/dp/B000FFOZZ6\n^ http://ecofondo.org/mambo/index.php\n^ http://www.destierroyreparacion.org/\n^ http://www.artnexus.com/NewsDetail/19561\n^ Butler, Rhett, \"And Our Winners Our...\", Time Magazine] 15 Sep, 2001,http://www.time.com/time/magazine/article/0,9171,1000784,00.html.\n^ http://latinmusic.about.com/od/concertsevents/a/ARTPREMIO2008.htm\n^ Nacional Records (September 2008). \"Aterciopelados to Release New Studio Album Rio October 21st on Nacional Records.\" Press release. Retrieved on October 2008.\n[edit]External links\n\n  Wikimedia Commons has media related to: Aterciopelados\nAterciopelados' Official MySpace\nView page ratings\nRate this page\nWhat's this?\nTrustworthy\nObjective\nComplete\nWell-written\nI am highly knowledgeable about this topic (optional)\n\nSubmit ratings\nCategories: Rock en Español musiciansMusical groups established in 1992Grammy Award-winning artistsLatin Grammy Award winnersColombian rock music groups\nCreate accountLog inArticleTalkReadEditView history\n\nMain page\nContents\nFeatured content\nCurrent events\nRandom article\nDonate to Wikipedia\nWikipedia Shop\nInteraction\nHelp\nAbout Wikipedia\nCommunity portal\nRecent changes\nContact Wikipedia\nToolbox\nPrint/export\nLanguages\nDeutsch\nEspañol\nPortuguês\nRomân.\n.......\nThis page was last modified on 6 September 2012 at 00:24.\nText is available under the Creative Commons Attribution-ShareAlike License; additional terms may apply. See Terms of use for details.\nWikipedia® is a registered trademark of the Wikimedia Foundation, Inc., a non-profit organization.\nContact us\nPrivacy policyAbout WikipediaDisclaimersMobile view "; 
+  var code = $("#s").html()
   //var code = "yo world\ntesting some code\nshould be able to scroll"; 
   lines = text_to_lines(code)
   render(1, 0)
