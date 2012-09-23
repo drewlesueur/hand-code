@@ -33,17 +33,17 @@
   var x_index = 0
   var x_offset = 0
   var y_offset = 0
-  var screen_width = 320
+  var viewport_width = 320
   var x_viewport = 16
 
-  var screen_height = 360
+  var viewport_height = 360
   var y_viewport = 10
-  var chr_width = (screen_width / x_viewport)
-  var chr_height = (screen_height / y_viewport)
+  var chr_width = (viewport_width / x_viewport)
+  var chr_height = (viewport_height / y_viewport)
 
   font_size = 35
   w = $("#w")
-  w.css({"width": screen_width + "px", "height": screen_height + "px"})
+  w.css({"width": viewport_width + "px", "height": viewport_height + "px"})
   notes = $("#notes")
   var cells = []
   var setup_screen = function () {
@@ -79,8 +79,15 @@
   }
 
   var render = function (x_offset, y_offset) {
+    // todo: can optimize this to know when it should change
+    if (mode == "scroll") {
+      w.css("background-color", "lightyellow")
+    } else {
+      w.css("background-color", "white")
+    }
     notes.text(x_offset + " " + y_offset)
     clear()
+    // todo: can optinize this
     $("#c" + (-x_offset + x_index) + "_" + (-y_offset + y_index)).addClass("cursor");
     var c_line
     for (var y = y_offset; y < y_offset + y_viewport; y++) {
@@ -111,13 +118,6 @@
   }
 
   var touch = {}
-  var touchstart = function (e) {
-    e.preventDefault()
-    if (mode == "scroll") {
-      touch.y1 = e.touches[0].pageY
-      touch.x1 = e.touches[0].pageX
-    }
-  }
      
   //https://github.com/drewlesueur/mobile/blob/server/public/index.js
 
@@ -130,7 +130,7 @@
   var quadrant_map = {
     lefttop: "a",
     leftmiddle: "c",
-    leftbotton: "e",
+    leftbottom: "e",
     righttop: "b",
     rightmiddle: "d",
     rightbottom: "f",
@@ -140,13 +140,14 @@
     // ab
     // cd
     // ef
-    var x_full = screen.width
+    var x_full = viewport_width
     var x_one_half = x_full / 2
 
-    var y_full = screen.height
-    var y_one_third = screen.height / 3
+    var y_full = viewport_height
+    var y_one_third = y_full / 3
     var y_two_thirds = y_one_third * 2
-    var x_place, y_place;
+    var x_place;
+    var y_place;
 
     if (x < x_one_half)  x_place = "left";
     else x_place = "right";
@@ -157,28 +158,99 @@
     return quadrant_map[x_place + y_place]
   }
 
-  var quadtrant_path = []
+  var quadrant_path = []
+
+  var touchstart = function (e) {
+    e.preventDefault()
+    touch.y1 = e.touches[0].pageY
+    touch.x1 = e.touches[0].pageX
+    touch.y2 = touch.y1
+    touch.x2 = touch.x1
+    touch.pageX = e.touches[0].pageX
+    touch.pageY = e.touches[0].pageY
+  }
+
   var touchmove = function  (e) {
+    touch.y2 = e.touches[0].pageY
+    touch.x2 = e.touches[0].pageX
     if (mode == "scroll") {
-      touch.y2 = e.touches[0].pageY
-      touch.x2 = e.touches[0].pageX
       var temp_x_offset = (x_offset + touch.x2 - touch.x1)
       var temp_y_offset = (y_offset + touch.y2 - touch.y1)
       render(move_factor(temp_x_offset), move_factor(temp_y_offset))   
     } else if (mode == "letters") {
       var quadrant = get_quadrant(e.touches[0].pageX, e.touches[0].pageY); 
+      notes.text(quadrant)
       if (quadrant != last_quadrant) {
         quadrant_path.push(quadrant) 
       }
-
       last_quadrant = quadrant;
     }
 
     e.preventDefault()
   }
 
+  var letter_map = {
+    bacefdbdf: "a",
+    bdcefdbdf: "a",
+    acecdfe: "b",
+    cecdfe: "b",
+    bacef: "c",
+    dcefdbdf: "d",
+    cdcef: "e",
+    cdbacef: "e",
+    bace: "f",
+    bacdbdfe: "g",
+    acecdf: "h",
+    ce: "i",
+    df: "i",
+    bdfe: "j",
+    dfe: "j",
+    bdcdf: "k",
+    ace: "l",
+    bdf: "l",
+    cecefdf: "m",
+    cecfdf: "m",
+    ecacfdbdf: "m",
+    cecdf: "n",
+    acefdb: "o",
+    acefdbac: "o",
+    bdfecab: "o",
+    acecadbc: "p",
+    bacdbdf: "q",
+    cecd: "r",
+    bacdfe: "s",
+    dcefe: "s",
+    abdf: "t",
+    cdf: "t",
+    cefdf: "u",
+    cefd: "v",
+    cefdfd: "w",
+    cef: "x",
+    acdbdfe: "y",
+    abdef: "z",
+    abdef: "z",
+    efef: "z",
+    cdfef: "z",
+    abcdef: "z",
+    ef: " ",
+    cbdf: "1",
+    abdfef: "2",
+    fe: "backspace"
+
+  }
   var input_letter = function (quadrant_path) {
-  
+    var path = quadrant_path.join("")
+    notes.text(path) 
+    letter = letter_map[path]
+    if (!letter) return;
+    if (letter == "backspace") {
+      lines[y_index].splice(x_index,1)
+      x_index -= 1
+    } else {
+      lines[y_index].splice(x_index, 0, letter)
+      x_index += 1
+    }
+    render(move_factor(x_offset), move_factor(y_offset))   
   }
 
   var touchend = function (e) {
@@ -187,16 +259,26 @@
       y_offset = (y_offset + touch.y2 - touch.y1)
       if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
         mode = "letters"
-        y_index = e.touches[0].pageY / chr_height
-        x_index = e.touches[0].pageX / chr_width
-        render()
+        y_index = move_factor(y_offset) + parseInt(touch.pageY / chr_height)
+        x_index = move_factor(x_offset) + parseInt(touch.pageX / chr_width)
+        
+       if (y_index >= lines.length) {
+         y_index = lines.length - 1
+       }
+
+       if (x_index >= lines[y_index].length) {
+         x_index = lines[y_index].length - 1
+       }
+        render(move_factor(x_offset), move_factor(y_offset))   
       }
     } else if (mode == "letters") {
       if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
         mode = "scroll"
+        render(move_factor(x_offset), move_factor(y_offset))   
       } else {
         input_letter(quadrant_path) 
-     }
+      }
+      quadrant_path = []
     }
   } 
 
@@ -208,8 +290,9 @@
 
 
 
-  var code = $("#s").html()
+  //var code = $("#s").html()
   //var code = "yo world\ntesting some code\nshould be able to scroll"; 
+  var code = "hi"
   lines = text_to_lines(code)
   render(1, 0)
 </script>
