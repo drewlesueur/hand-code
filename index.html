@@ -159,7 +159,8 @@
   }
 
   var quadrant_path = []
-
+  
+  var scroll_mode_timeout = null;
   var touchstart = function (e) {
     e.preventDefault()
     touch.y1 = e.touches[0].pageY
@@ -168,9 +169,38 @@
     touch.x2 = touch.x1
     touch.pageX = e.touches[0].pageX
     touch.pageY = e.touches[0].pageY
+    touch.start = Date.now()
+
+    if (mode == "letters") {
+      scroll_mode_timeout = setTimeout(function () {
+        mode = "scroll"
+        prevent_touchend = true
+        render(move_factor(x_offset), move_factor(y_offset))   
+      }, 200)
+    }
   }
 
+  var all_letters = [
+    "abcdefghijklmnopqrstuvwzyz ",
+    "0123456789",
+    ",./<>?", "[]\\{}|;':\"",
+    "!@#$%^&*()_+",
+  ]
+  var get_letter = function (x, y) {
+
+    var x_percent = (x / viewport_width)
+    var y_percent = (y / viewport_height)
+
+   var column_index = parseInt(x_percent * all_letters.length)
+   var column = all_letters[column_index]
+   var letter_index = parseInt(y_percent * column.length)
+   var letter = column[letter_index]
+    return letter 
+  }
+
+  var temping_a_letter = 0
   var touchmove = function  (e) {
+    clearTimeout(scroll_mode_timeout)
     touch.y2 = e.touches[0].pageY
     touch.x2 = e.touches[0].pageX
     if (mode == "scroll") {
@@ -178,12 +208,22 @@
       var temp_y_offset = (y_offset + touch.y2 - touch.y1)
       render(move_factor(temp_x_offset), move_factor(temp_y_offset))   
     } else if (mode == "letters") {
-      var quadrant = get_quadrant(e.touches[0].pageX, e.touches[0].pageY); 
-      notes.text(quadrant)
-      if (quadrant != last_quadrant) {
-        quadrant_path.push(quadrant) 
+      var tmp_letter = get_letter(e.touches[0].pageX, e.touches[0].pageY); 
+      if (tmp_letter == "backspace") {
+        lines[y_index].splice(x_index - 1,1)
+        x_index -= 1
+      } else {
+        lines[y_index].splice(x_index, temping_a_letter, tmp_letter)
+        temping_a_letter = 1
       }
-      last_quadrant = quadrant;
+      render(move_factor(x_offset), move_factor(y_offset))   
+
+      //var quadrant = get_quadrant(e.touches[0].pageX, e.touches[0].pageY); 
+      //notes.text(quadrant)
+      //if (quadrant != last_quadrant) {
+      //  quadrant_path.push(quadrant) 
+      //}
+      //last_quadrant = quadrant;
     }
 
     e.preventDefault()
@@ -206,6 +246,7 @@
     bdfe: "j",
     dfe: "j",
     bdcdf: "k",
+    bdcef: "k",
     ace: "l",
     bdf: "l",
     cecefdf: "m",
@@ -215,6 +256,7 @@
     acefdb: "o",
     acefdbac: "o",
     bdfecab: "o",
+    bacefdba: "o",
     acecadbc: "p",
     bacdbdf: "q",
     cecd: "r",
@@ -244,7 +286,7 @@
     letter = letter_map[path]
     if (!letter) return;
     if (letter == "backspace") {
-      lines[y_index].splice(x_index,1)
+      lines[y_index].splice(x_index - 1,1)
       x_index -= 1
     } else {
       lines[y_index].splice(x_index, 0, letter)
@@ -252,13 +294,24 @@
     }
     render(move_factor(x_offset), move_factor(y_offset))   
   }
-
+  var prevent_touchend = false
   var touchend = function (e) {
+    temping_a_letter = 0
+    clearTimeout(scroll_mode_timeout)
+    if (prevent_touchend) {
+      prevent_touchend = false 
+      return
+    }
     if (mode == "scroll") {
       x_offset = (x_offset + touch.x2 - touch.x1)
       y_offset = (y_offset + touch.y2 - touch.y1)
       if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
         mode = "letters"
+        render(move_factor(x_offset), move_factor(y_offset))   
+      }
+    } else if (mode == "letters") {
+       
+      if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
         y_index = move_factor(y_offset) + parseInt(touch.pageY / chr_height)
         x_index = move_factor(x_offset) + parseInt(touch.pageX / chr_width)
         
@@ -266,19 +319,16 @@
          y_index = lines.length - 1
        }
 
-       if (x_index >= lines[y_index].length) {
-         x_index = lines[y_index].length - 1
+       if (x_index > lines[y_index].length) {
+         x_index = lines[y_index].length
        }
         render(move_factor(x_offset), move_factor(y_offset))   
-      }
-    } else if (mode == "letters") {
-      if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
-        mode = "scroll"
-        render(move_factor(x_offset), move_factor(y_offset))   
       } else {
-        input_letter(quadrant_path) 
+        //input_letter(quadrant_path) 
+        x_index += 1
+        render(move_factor(x_offset), move_factor(y_offset))   
       }
-      quadrant_path = []
+      //quadrant_path = []
     }
   } 
 
@@ -294,7 +344,7 @@
   //var code = "yo world\ntesting some code\nshould be able to scroll"; 
   var code = "hi"
   lines = text_to_lines(code)
-  render(1, 0)
+  render(0, 0)
 </script>
 </html>
 
