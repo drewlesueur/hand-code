@@ -53,9 +53,10 @@
     left: 0,
     "top": 0
   })
-  c.attr("width", canvas_width)
-  c.attr("height", canvas_height)
+  c.attr("width", canvas_width * 2)
+  c.attr("height", canvas_height * 2)
   var ctx = c[0].getContext("2d")
+  ctx.scale(2,2)
 
   var tick = function () {
      
@@ -82,6 +83,10 @@
     ctx.restore()
   }
 
+  var draw_text = function (x_offset, y_offset) {
+  
+  }
+
   var render_raw = function (x_offset, y_offset) {
     // todo: can optimize this to know when it should change
     clear_viewport()
@@ -92,6 +97,7 @@
     ctx.restore()
 
     draw_cursor(x_offset, y_offset)
+    draw_text(x_offset, y_offset)
     var c_line
     //for (var y = y_offset; y < y_offset + y_viewport; y++) {
     //  c_line = lines[y];
