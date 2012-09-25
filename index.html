@@ -20,10 +20,11 @@
   <canvas id="c"></canvas>
 </body>
 <script id="s">//stuff
-  setTimeout(function () { window.scrollTo(0, 1) }, 100)
+
+  //setTimeout(function () { window.scrollTo(0, 1) }, 100)
 
   var screen_width = 320
-  var screen_height = screen.height
+  var screen_height = window.innerHeight
 
   var mode = "scroll"
   var line  = []
@@ -44,6 +45,7 @@
   var font_size = 35
   var font_name = "Courier"
 
+  var insert_mode_timeout = null
   var c = $("#c")
   var canvas_width = screen_width
   var canvas_height = screen_height
@@ -114,7 +116,11 @@
     clear_viewport()
 
     ctx.save()
-    ctx.fillStyle = "rgba(255, 255, 0, 0.1)"
+    if (mode == "scroll") {
+      ctx.fillStyle = "rgba(255, 255, 0, 0.1)";
+    } else {
+      ctx.fillStyle = "rgba(0, 255, 0, 0.1)";
+    }
     ctx.fillRect(0,0,screen_width, screen_height)
     ctx.restore()
 
@@ -156,6 +162,7 @@
   }
   
   var mouse = "up"
+  var finger = "up"
   auto_mouseup = false
   setTimeout(function () {
     var auto_mouseup = true
@@ -181,9 +188,27 @@
     mouse = "up"
     touchend()
   }
+  
+  var enter_insert_mode = function () {
+    mode = "insert"
+    render()
+  }
 
+  var backspace_timeout
   var touchstart = function (e) {
+    finger = "down"
     e.preventDefault()
+    if (mode == "scroll") {
+      insert_mode_timeout = setTimeout(function () {
+        prevent_insert = true
+        enter_insert_mode()
+      }, 200)
+    } else {
+      backspace_timeout = setTimeout(function () {
+        mode = "backspace"
+        backspace_interval = setInterval(backspace, 200) 
+      }, dot_length * 4)
+    }
     touch.y1 = e.touches[0].pageY
     touch.x1 = e.touches[0].pageX
     touch.y2 = touch.y1
@@ -194,14 +219,15 @@
   }
 
   var touchmove = function  (e) {
+    clearTimeout(insert_mode_timeout)
     touch.y2 = e.touches[0].pageY
     touch.x2 = e.touches[0].pageX
     if (mode == "scroll") {
       var temp_x_offset = (x_offset + touch.x2 - touch.x1)
       var temp_y_offset = (y_offset + touch.y2 - touch.y1)
       render_raw(temp_x_offset, temp_y_offset)   
-    } else if (mode == "letters") {
-      var tmp_letter = get_letter(e.touches[0].pageX, e.touches[0].pageY); 
+    } else if (mode == "insert") {
+      return
       if (tmp_letter == "backspace") {
         lines[y_cursor].splice(x_cursor - 1,1)
         x_cursor -= 1
@@ -210,7 +236,6 @@
         temping_a_letter = 1
       }
       render()   
-
     }
 
     e.preventDefault()
@@ -230,12 +255,19 @@
     }
     render()   
   }
+
+  var touch_time
   var touchend = function (e) {
-    if (mode == "scroll") {
+    finger = "up"
+    clearTimeout(insert_mode_timeout)
+    clearInterval(backspace_interval)
+    clearTimeout(backspace_timeout)
+    if (mode == "backspace") {
+      mode = "insert"
+    } else if (mode == "scroll") {
       x_offset = (x_offset + touch.x2 - touch.x1)
       y_offset = (y_offset + touch.y2 - touch.y1)
       if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
-        console.log(Math.round(-y_offset / chr_height), Math.round(touch.pageY / chr_height))
         y_cursor = Math.floor((touch.pageY - y_offset)/ chr_height)
         x_cursor = Math.floor((touch.pageX - x_offset)/ chr_width)
         
@@ -253,15 +285,104 @@
        }
        render()   
       }
-    } else if (mode == "letters") {
-       
-      if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
-      } else {
-        x_cursor += 1
-        render()   
+    } else if (mode == "insert") {
+      clearTimeout(add_morse_letter_timeout)
+      clearTimeout(add_morse_word_timeout)
+      if (prevent_insert) {
+        prevent_insert = false
+        return
       }
+      touch_time = Date.now() - touch.start
+      if (touch_time <= dot_length) {
+        codes.push(".");
+      } else {
+        codes.push("-")
+      }
+      add_morse_letter_timeout = setTimeout(add_morse_letter, letter_spacing)
+      add_morse_word_timeout = setTimeout(add_morse_word, word_spacing)
     }
   } 
+  var backspace_interval;
+  var prevent_insert = false
+  var add_morse_letter_timeout;
+  var add_morse_word_timeout;
+  var add_morse_word = function () {
+    add_letter(" ")
+  }
+
+  var add_letter = function (letter) {
+    lines[y_cursor].splice(x_cursor, 0, letter)
+    x_cursor += 1
+    if (x_cursor > x_viewport) {
+      
+    }
+    render()
+  }
+
+  var backspace = function () {
+    console.log("backspace")
+    lines[y_cursor].splice(x_cursor - 1,1)
+    x_cursor -= 1
+    render()
+  }
+  var add_morse_letter = function () {
+    document.title = codes.join("") + touch_time
+    if (finger == "down") return;
+    console.log(codes.join(""))
+    var letter = morse_codes[codes.join("")]
+    console.log(letter)
+    codes = []
+    //document.title = letter
+    if (letter == "backspace") {
+      return backspace()
+    } else if (letter == "AR") {
+      mode = "scroll"
+      render()
+    } else if (letter == "newline") {
+      lines.splice(y_cursor + 1, 0, lines[y_cursor].splice(x_cursor))
+      y_cursor += 1
+      x_cursor = 0
+    } else {
+      return add_letter(letter)
+    }
+    render()   
+  } 
+
+  var dot_length = 100
+  var letter_spacing = dot_length * 3 
+  var word_spacing = dot_length * 7 
+  var codes = []
+  var morse_codes = {
+    ".-.-" : "newline",
+    ".-.-.": "AR",
+    "......": "backspace",
+    ".-": "a",
+    "_...": "b",
+    "-.-.": "c",
+    "-..": "d",
+    ".": "e",
+    "..-.": "f",
+    "--.": "g",
+    "....": "h",
+    "..": "i",
+    ".---": "j",
+    "-.-": "k",
+    ".-..": "l",
+    "--": "m",
+    "-.": "n",
+    "---": "o",
+    ".--.": "p",
+    "--.-": "q",
+    ".-.": "r",
+    "...": "s",
+    "-": "t",
+    "..-": "u",
+    "...-": "v",
+    ".--": "w",
+    "-..-": "x",
+    "-.--": "y",
+    "--..": "z"
+  }
 
   $(document).ready(function () {
     if (screen.width > 320) {
@@ -279,7 +400,7 @@
 
 
 
-  var code = "Hhello world this is a test\n and other struff"
+  var code = "one\ntwo\nthree\nfour\nfive"
   lines = text_to_lines(code)
   render()
 </script>
