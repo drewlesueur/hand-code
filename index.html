@@ -73,7 +73,7 @@
   }
 
   var render = function () {
-    render_raw(move_factor(x_offset), move_factor(y_offset))   
+    render_raw(x_offset, y_offset)
     // # todo maybe cache the result of the move_factor call
   }
 
@@ -90,9 +90,9 @@
     var c_line
     var y_start = Math.floor(-y_offset / chr_height)
     var x_start = Math.floor(-x_offset / chr_width)
+    // todo maybe cache y_start
     var x_px
     var y_px
-    // todo maybe cache y_start
    
     for (var y = y_start; y < y_start + y_viewport + 1; y++) {
       c_line = lines[y];
@@ -235,15 +235,21 @@
       x_offset = (x_offset + touch.x2 - touch.x1)
       y_offset = (y_offset + touch.y2 - touch.y1)
       if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
-        y_cursor = move_factor(y_offset) + parseInt(touch.pageY / chr_height)
-        x_cursor = move_factor(x_offset) + parseInt(touch.pageX / chr_width)
+        console.log(Math.round(-y_offset / chr_height), Math.round(touch.pageY / chr_height))
+        y_cursor = Math.floor((touch.pageY - y_offset)/ chr_height)
+        x_cursor = Math.floor((touch.pageX - x_offset)/ chr_width)
         
        if (y_cursor >= lines.length) {
-         y_cursor = lines.length - 1
+         y_cursor = lines.length - 1;
+       } else if (y_cursor < 0) {
+        y_cursor = 0
        }
 
+
        if (x_cursor > lines[y_cursor].length) {
-         x_cursor = lines[y_cursor].length
+         x_cursor = lines[y_cursor].length;
+       } else if (x_cursor < 0) {
+         x_cursor = 0 
        }
        render()   
       }
