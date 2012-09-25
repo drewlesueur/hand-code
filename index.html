@@ -307,16 +307,21 @@
   var add_morse_letter_timeout;
   var add_morse_word_timeout;
   var add_morse_word = function () {
+   // while (letter_queue.length) {
+     // add_letter(letter_queue.shift())
+    //}
     add_letter(" ")
+    render()
   }
-
+  
+  letter_queue = []
   var add_letter = function (letter) {
     lines[y_cursor].splice(x_cursor, 0, letter)
     x_cursor += 1
     if (x_cursor > x_viewport) {
       
     }
-    render()
+    //render()
   }
 
   var backspace = function () {
@@ -326,7 +331,6 @@
     render()
   }
   var add_morse_letter = function () {
-    document.title = codes.join("") + touch_time
     if (finger == "down") return;
     console.log(codes.join(""))
     var letter = morse_codes[codes.join("")]
@@ -343,12 +347,13 @@
       y_cursor += 1
       x_cursor = 0
     } else {
-      return add_letter(letter)
+      add_letter(letter)
+      //letter_queue.push(letter)
     }
-    render()   
+    //render()   
   } 
 
-  var dot_length = 100
+  var dot_length = 150
   var letter_spacing = dot_length * 3 
   var word_spacing = dot_length * 7 
   var codes = []
