@@ -11,15 +11,25 @@
   .cursor {
     background-color: lightblue;
   }
+
 </style>
 <script src="underscore-min.js"></script>
 <script src="zepto.min.js"></script>
 </head>
 <body style="height:1200px;">
+  <div id="m">
+    <div id="straight">
+      <div id="dot-simple"></div>
+    </div>
+    <div id="iambic">
+      <div id="dot"></div>
+      <div id="dash"></div>
+    </div>
+  </div>
   <div id="w">
   </div>
   <div id="k">
-    <br />
+    <canvas id="c"><canvas>
     <div id="notes"></div>
   </div>
 </body>
@@ -41,9 +51,60 @@
   var chr_width = (viewport_width / x_viewport)
   var chr_height = (viewport_height / y_viewport)
 
-  font_size = 35
-  w = $("#w")
+  var font_size = 35
+  var w = $("#w")
   w.css({"width": viewport_width + "px", "height": viewport_height + "px"})
+
+  var c = $("#c")
+  var canvas_width = viewport_width
+  var canvas_height = (screen.height - viewport_height)
+  c.css({
+    width: canvas_width + "px",
+    height: canvas_height + "px" ,
+    position: "absolute",
+    left: 0,
+    "top": viewport_height + "px",
+  })
+  c.attr("width", canvas_width)
+  c.attr("height", canvas_height)
+  var ctx = c[0].getContext("2d")
+  ctx.fillRect(0,0,10,10)
+
+  var tick = function () {
+     
+  }
+
+  webkitRequestAnimationFrame(tick)
+
+  var dot = $("#dot")
+  var dash = $("#dash")
+  var dot_simple = $("#dot-simple")
+  dot.css({
+    width: viewport_width / 2 ,
+    height: viewport_height / 3,
+    "background-color": "rgba(200,200,255,0.25)",
+    position: "absolute",
+    left: 0,
+    "top": (viewport_height / 3 * 2) + "px"
+  })
+  dash.css({
+    width: viewport_width / 2 ,
+    height: viewport_height / 3,
+    "background-color": "rgba(255,200,200,0.25)",
+    position: "absolute",
+    left: viewport_width / 2 ,
+    "top": (viewport_height / 3 * 2) + "px"
+  })
+
+  dot_simple.css({
+    width: viewport_width,
+    height: viewport_height / 3,
+    "background-color": "rgba(200,255,200,0.25)",
+    position: "absolute",
+    left: 0,
+    "top": (viewport_height / 3) + "px"
+  })
+
   notes = $("#notes")
   var cells = []
   var setup_screen = function () {
@@ -124,7 +185,7 @@
   var move_factor = function (z) {
     return -1 * parseInt(z / 10) 
   }
-  
+ 
   var last_quadrant = null;
 
   var quadrant_map = {
@@ -306,12 +367,6 @@
       x_offset = (x_offset + touch.x2 - touch.x1)
       y_offset = (y_offset + touch.y2 - touch.y1)
       if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
-        mode = "letters"
-        render(move_factor(x_offset), move_factor(y_offset))   
-      }
-    } else if (mode == "letters") {
-       
-      if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
         y_index = move_factor(y_offset) + parseInt(touch.pageY / chr_height)
         x_index = move_factor(x_offset) + parseInt(touch.pageX / chr_width)
         
@@ -322,7 +377,11 @@
        if (x_index > lines[y_index].length) {
          x_index = lines[y_index].length
        }
-        render(move_factor(x_offset), move_factor(y_offset))   
+       render(move_factor(x_offset), move_factor(y_offset))   
+      }
+    } else if (mode == "letters") {
+       
+      if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
       } else {
         //input_letter(quadrant_path) 
         x_index += 1
