@@ -198,43 +198,103 @@
   var touchstart = function (e) {
     finger = "down"
     e.preventDefault()
+    touch.y1 = e.touches[0].pageY
+    touch.x1 = e.touches[0].pageX
+    touch.y2 = touch.y1
+    touch.x2 = touch.x1
+    touch.old_y2 = touch.y1
+    touch.old_x2 = touch.x1
+    touch.pageX = e.touches[0].pageX
+    touch.pageY = e.touches[0].pageY
+    touch.start = Date.now()
+    touch.side = touch.x1 < viewport_width / 2 ? "." : "-"
     if (mode == "scroll") {
       insert_mode_timeout = setTimeout(function () {
         prevent_insert = true
         enter_insert_mode()
       }, 200)
     } else {
-      backspace_timeout = setTimeout(function () {
-        mode = "backspace"
-        backspace_interval = setInterval(backspace, 200) 
-      }, dot_length * 4)
+      //backspace_timeout = setTimeout(function () {
+      //  mode = "backspace"
+      //  backspace_interval = setInterval(backspace, 200) 
+      //}, dot_length * 4)
+
+      console.log("douch down " + touch.side )
+      codes.push(touch.side)
     }
-    touch.y1 = e.touches[0].pageY
-    touch.x1 = e.touches[0].pageX
-    touch.y2 = touch.y1
-    touch.x2 = touch.x1
-    touch.pageX = e.touches[0].pageX
-    touch.pageY = e.touches[0].pageY
-    touch.start = Date.now()
+
   }
 
+  var angle_diff = function (theta, beta) {
+    var diff = Math.abs(theta - beta)
+    if (diff > Math.PI) {
+      if (theta > beta) {
+        return 2 * Math.PI - theta + beta
+      } else {
+        return 2 * Math.PI - beta + theta
+      }
+    } else {
+      return diff
+    }
+  }
+
+  var angle_counter = 0
   var touchmove = function  (e) {
     clearTimeout(insert_mode_timeout)
+    touch.old_y2 = touch.y2
+    touch.old_x2 = touch.x2
+
     touch.y2 = e.touches[0].pageY
     touch.x2 = e.touches[0].pageX
+
     if (mode == "scroll") {
       var temp_x_offset = (x_offset + touch.x2 - touch.x1)
       var temp_y_offset = (y_offset + touch.y2 - touch.y1)
       render_raw(temp_x_offset, temp_y_offset)   
     } else if (mode == "insert") {
-      return
-      if (tmp_letter == "backspace") {
-        lines[y_cursor].splice(x_cursor - 1,1)
-        x_cursor -= 1
-      } else {
-        lines[y_cursor].splice(x_cursor, temping_a_letter, tmp_letter)
-        temping_a_letter = 1
+      var side = touch.x2 < viewport_width / 2 ? "." : "-"
+      if (side != touch.side) {
+        console.log("added because of new side " + side)
+        codes.push(side)
+        touch.side = side
       }
+       
+        var y_diff = (touch.y2 - touch.y1)
+        var x_diff = (touch.x2 - touch.x1)
+        var angle = Math.atan(y_diff / x_diff)
+        var distance = Math.pow(Math.pow(touch.y2 - touch.y1, 2) + Math.pow(touch.x2 - touch.x1, 2), 0.5)
+        if (y_diff >= 0 && x_diff < 0) {
+          angle = Math.PI + -angle
+        } else if (y_diff < 0 && x_diff >= 0) {
+          angle = -angle
+        } else if (y_diff < 0 && x_diff < 0) {
+          angle = (Math.PI - angle)
+        } else if (y_diff >= 0 && x_diff >= 0) {
+          angle = (Math.PI - angle) + Math.PI
+        } else {
+          angle = 0 
+        }
+
+
+        // if (isNaN(angle)) debugger
+
+        console.log(angle / Math.PI * 180, distance)
+        return
+
+        if (touch.angle && angle_diff(angle, touch.angle) > Math.PI / 6) {
+         // console.log(angle, touch.angle)
+         // console.log(angle / Math.PI * 180)
+         // console.log("added direction " + side)
+          codes.push(side)
+          console.log(codes.join(""))
+        } else {
+           
+        }
+
+        touch.angle = angle
+
+
+      return
       render()   
     }
 
@@ -286,20 +346,13 @@
        render()   
       }
     } else if (mode == "insert") {
-      clearTimeout(add_morse_letter_timeout)
-      clearTimeout(add_morse_word_timeout)
       if (prevent_insert) {
         prevent_insert = false
         return
       }
+      codes.push(touch.side)
       touch_time = Date.now() - touch.start
-      if (touch_time <= dot_length) {
-        codes.push(".");
-      } else {
-        codes.push("-")
-      }
-      add_morse_letter_timeout = setTimeout(add_morse_letter, letter_spacing)
-      add_morse_word_timeout = setTimeout(add_morse_word, word_spacing)
+      add_morse_letter()
     }
   } 
   var backspace_interval;
@@ -321,7 +374,7 @@
     if (x_cursor > x_viewport) {
       
     }
-    //render()
+    render()
   }
 
   var backspace = function () {
