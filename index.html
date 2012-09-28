@@ -45,7 +45,6 @@
   var font_size = 35
   var font_name = "Courier"
 
-  var insert_mode_timeout = null
   var c = $("#c")
   var canvas_width = screen_width
   var canvas_height = screen_height
@@ -79,6 +78,22 @@
     // # todo maybe cache the result of the move_factor call
   }
 
+  draw_lines = function () {
+    if (roughes.length == 0) return;
+    document.title = (roughes.length)
+    var rough = roughes[0];
+    ctx.save()
+    ctx.beginPath()
+    ctx.lineWidth = 10
+    ctx.moveTo(rough[0], rough[1])
+    for (var i = 1; i < roughes.length; i++) {
+      var rough = roughes[i]
+      ctx.lineTo(rough[0], rough[1])
+    }
+    ctx.stroke()
+    ctx.restore()
+  }
+
   var draw_cursor = function (x_offset, y_offset) {
     var x = (x_offset + chr_width * x_cursor)
     var y = (y_offset + chr_height * y_cursor)
@@ -90,6 +105,7 @@
 
   var draw_text = function (x_offset, y_offset) {
     var c_line
+
     var y_start = Math.floor(-y_offset / chr_height)
     var x_start = Math.floor(-x_offset / chr_width)
     // todo maybe cache y_start
@@ -126,16 +142,8 @@
 
     draw_cursor(x_offset, y_offset)
     draw_text(x_offset, y_offset)
+    draw_lines()
     var c_line
-    //for (var y = y_offset; y < y_offset + y_viewport; y++) {
-    //  c_line = lines[y];
-    //  if (!c_line) continue;
-    //  for (var x = x_offset; x < x_offset + x_viewport; x++) {
-    //    var c_chr = c_line[x];
-    //    var cell = cells[x_viewport * (y - y_offset) + (x - x_offset)]
-    //    cell.text(c_chr)
-    //  }
-    //}
   }
 
   var text_to_lines = function (text) {
@@ -194,8 +202,17 @@
     render()
   }
 
+  var enter_scroll_mode = function () {
+    mode = "scroll"
+    render()
+  }
+
   var backspace_timeout
+  var scroll_mode_timeout
+  var insert_mode_timeout
+
   var touchstart = function (e) {
+    roughes = []
     finger = "down"
     e.preventDefault()
     touch.y1 = e.touches[0].pageY
@@ -204,6 +221,11 @@
     touch.x2 = touch.x1
     touch.old_y2 = touch.y1
     touch.old_x2 = touch.x1
+    touch.rough_y2 = touch.y1
+    touch.rough_x2 = touch.x1
+    touch.x_pivot = touch.x1
+    touch.y_pivot = touch.y1
+    touch.max_distance = 0
     touch.pageX = e.touches[0].pageX
     touch.pageY = e.touches[0].pageY
     touch.start = Date.now()
@@ -218,11 +240,18 @@
       //  mode = "backspace"
       //  backspace_interval = setInterval(backspace, 200) 
       //}, dot_length * 4)
+      //
+      
+      scroll_mode_timeout = setTimeout(function () {
+        prevent_insert = true
+        enter_scroll_mode()
+      }, 500)
 
       console.log("douch down " + touch.side )
       codes.push(touch.side)
+      lines.push([touch.side, " ", "s", "t", "a", "r", "t"])
     }
-
+    render()
   }
 
   var angle_diff = function (theta, beta) {
@@ -237,15 +266,18 @@
       return diff
     }
   }
-
-  var angle_counter = 0
+  
+  var roughes = []
   var touchmove = function  (e) {
     clearTimeout(insert_mode_timeout)
+    clearTimeout(scroll_mode_timeout)
+
     touch.old_y2 = touch.y2
     touch.old_x2 = touch.x2
 
     touch.y2 = e.touches[0].pageY
     touch.x2 = e.touches[0].pageX
+
 
     if (mode == "scroll") {
       var temp_x_offset = (x_offset + touch.x2 - touch.x1)
@@ -253,16 +285,26 @@
       render_raw(temp_x_offset, temp_y_offset)   
     } else if (mode == "insert") {
       var side = touch.x2 < viewport_width / 2 ? "." : "-"
-      if (side != touch.side) {
-        console.log("added because of new side " + side)
-        codes.push(side)
-        touch.side = side
-      }
-       
-        var y_diff = (touch.y2 - touch.y1)
-        var x_diff = (touch.x2 - touch.x1)
+      touch.side = side
+
+        var y_diff = (touch.y2 - touch.rough_y2)
+        var x_diff = (touch.x2 - touch.rough_x2)
+        var distance = Math.pow(Math.pow(touch.y2 - touch.rough_y2, 2) + Math.pow(touch.x2 - touch.rough_x2, 2), 0.5)
+
+        //document.title = "d: " + Math.round(distance)
+        if (distance > 10) { // 10px leeway
+          console.log("distance", touch.max_distance, distance)
+          touch.max_distance = 0
+          touch.rough_x2 = touch.x2
+          touch.rough_y2 = touch.y2
+          roughes.push([touch.x2, touch.y2])
+          render()
+          } else {
+          return
+        }
+
         var angle = Math.atan(y_diff / x_diff)
-        var distance = Math.pow(Math.pow(touch.y2 - touch.y1, 2) + Math.pow(touch.x2 - touch.x1, 2), 0.5)
+
         if (y_diff >= 0 && x_diff < 0) {
           angle = Math.PI + -angle
         } else if (y_diff < 0 && x_diff >= 0) {
@@ -275,20 +317,31 @@
           angle = 0 
         }
 
-
         // if (isNaN(angle)) debugger
+        var round_angle = Math.round(angle / Math.PI * 180)
+        //document.title = "ra: " + round_angle
+        var angle_diff_val = "--"
+        if (touch.angle) {
+          angle_diff_val = Math.round(angle_diff(angle, touch.angle) / Math.PI * 180)
+        }
 
-        console.log(angle / Math.PI * 180, distance)
-        return
-
-        if (touch.angle && angle_diff(angle, touch.angle) > Math.PI / 6) {
-         // console.log(angle, touch.angle)
-         // console.log(angle / Math.PI * 180)
-         // console.log("added direction " + side)
+        //document.title = "adv:" +  angle_diff_val
+        console.log(
+        "y2,y2':"+touch.y2+","+touch.old_y2,
+        "x2,x2':"+touch.x2+","+touch.old_x2, 
+        "angle_diff:"+angle_diff_val,
+        "round_angle:"+round_angle)
+        lines.push(("angle_diff: " + angle_diff_val).split(""))
+        render()
+        
+        // todo: figure out a better pivot algorithim. think about granularity and curving up to a right angle 
+        if (angle_diff_val > 60) {
+          touch.max_distance = 0
+          //1document.title = ["angle", touch.angle / Math.PI * 180, angle / Math.PI * 180]
           codes.push(side)
+          lines.push([side, " ", "m"])
+          render()
           console.log(codes.join(""))
-        } else {
-           
         }
 
         touch.angle = angle
@@ -320,6 +373,7 @@
   var touchend = function (e) {
     finger = "up"
     clearTimeout(insert_mode_timeout)
+    clearTimeout(scroll_mode_timeout)
     clearInterval(backspace_interval)
     clearTimeout(backspace_timeout)
     if (mode == "backspace") {
@@ -350,10 +404,12 @@
         prevent_insert = false
         return
       }
-      codes.push(touch.side)
+      if (touch.y2 != touch.y1 && touch.x2 != touch.x1) codes.push(touch.side)
       touch_time = Date.now() - touch.start
       add_morse_letter()
     }
+
+    touch = {}
   } 
   var backspace_interval;
   var prevent_insert = false
@@ -399,6 +455,7 @@
       lines.splice(y_cursor + 1, 0, lines[y_cursor].splice(x_cursor))
       y_cursor += 1
       x_cursor = 0
+      render()
     } else {
       add_letter(letter)
       //letter_queue.push(letter)
@@ -415,7 +472,7 @@
     ".-.-.": "AR",
     "......": "backspace",
     ".-": "a",
-    "_...": "b",
+    "-...": "b",
     "-.-.": "c",
     "-..": "d",
     ".": "e",
@@ -458,7 +515,7 @@
 
 
 
-  var code = "one\ntwo\nthree\nfour\nfive"
+  var code = ""
   lines = text_to_lines(code)
   render()
 </script>
