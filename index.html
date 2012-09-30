@@ -211,6 +211,7 @@
   var scroll_mode_timeout
   var insert_mode_timeout
 
+  var last_touch_was_swipe = false
   var touchstart = function (e) {
     clearTimeout(end_timeout)
     roughes = []
@@ -231,11 +232,17 @@
     touch.pageY = e.touches[0].pageY
     touch.start = Date.now()
     touch.side = touch.x1 < viewport_width / 2 ? "." : "-"
-    if (mode == "scroll") {
-      insert_mode_timeout = setTimeout(function () {
-        prevent_insert = true
-        enter_insert_mode()
-      }, 200)
+    if (mode == "scroll" ) {
+      clearTimeout(add_morse_letter_timeout)
+      clearTimeout(add_morse_word_timeout)
+      //insert_mode_timeout = setTimeout(function () {
+      //  prevent_insert = true
+      //  enter_insert_mode()
+      //}, 200)
+      if (!last_touch_was_swipe) {
+
+      }
+        
     } else {
       //backspace_timeout = setTimeout(function () {
       //  mode = "backspace"
@@ -250,7 +257,6 @@
 
       console.log("douch down " + touch.side )
       codes.push(touch.side)
-      lines.push([touch.side, " ", "s", "t", "a", "r", "t"])
     }
     render()
   }
@@ -270,6 +276,7 @@
   
   var roughes = []
   var touchmove = function  (e) {
+    last_touch_was_swipe = true
     clearTimeout(insert_mode_timeout)
     clearTimeout(scroll_mode_timeout)
 
@@ -374,7 +381,7 @@
   var end_timeout
   var touchend = function (e) {
     finger = "up"
-    clearTimeout(insert_mode_timeout)
+    //clearTimeout(insert_mode_timeout)
     clearTimeout(scroll_mode_timeout)
     clearInterval(backspace_interval)
     clearTimeout(backspace_timeout)
@@ -384,22 +391,36 @@
       x_offset = (x_offset + touch.x2 - touch.x1)
       y_offset = (y_offset + touch.y2 - touch.y1)
       if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
-        y_cursor = Math.floor((touch.pageY - y_offset)/ chr_height)
-        x_cursor = Math.floor((touch.pageX - x_offset)/ chr_width)
-        
-       if (y_cursor >= lines.length) {
-         y_cursor = lines.length - 1;
-       } else if (y_cursor < 0) {
-        y_cursor = 0
-       }
+        if (!last_touch_was_swipe) {
+          touch_time = Date.now() - touch.start
+          if (touch_time <= dash_length) codes.push(".")
+          else codes.push("-")
+          wo_date = Date.now()
+          add_morse_letter_timeout = setTimeout( function () {
+            add_morse_letter()
+          }, letter_spacing)
+          add_morse_word_timeout = setTimeout( function () {
+            add_morse_word()
+          }, word_spacing)
+        } else {
+          y_cursor = Math.floor((touch.pageY - y_offset)/ chr_height)
+          x_cursor = Math.floor((touch.pageX - x_offset)/ chr_width)
+           
+          if (y_cursor >= lines.length) {
+            y_cursor = lines.length - 1;
+          } else if (y_cursor < 0) {
+           y_cursor = 0
+          }
 
 
-       if (x_cursor > lines[y_cursor].length) {
-         x_cursor = lines[y_cursor].length;
-       } else if (x_cursor < 0) {
-         x_cursor = 0 
-       }
-       render()   
+          if (x_cursor > lines[y_cursor].length) {
+            x_cursor = lines[y_cursor].length;
+          } else if (x_cursor < 0) {
+            x_cursor = 0 
+          }
+        }
+        render()   
+        last_touch_was_swipe = false
       }
       touch = {}
     } else if (mode == "insert") {
@@ -443,6 +464,7 @@
   }
 
   var backspace = function () {
+    clearTimeout(add_morse_word)
     console.log("backspace")
     lines[y_cursor].splice(x_cursor - 1,1)
     x_cursor -= 1
@@ -472,7 +494,9 @@
     //render()   
   } 
 
-  var dot_length = 150
+  var dot_length = 75
+  var dash_length = dot_length * 3
+
   var letter_spacing = dot_length * 3 
   var word_spacing = dot_length * 7 
   var codes = []
