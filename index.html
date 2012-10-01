@@ -235,14 +235,14 @@
     if (mode == "scroll" ) {
       clearTimeout(add_morse_letter_timeout)
       clearTimeout(add_morse_word_timeout)
-
-      if (touch.y1 < 100 && touch.x1 < 160) {
+      if (last_touch_was_swipe ) {
+      } else if (screen_height - touch.y1 < 100 && touch.x1 < 270 && touch.x1 > 50) {
         add_morse_word()
         is_morse_tap = false
       } else if (touch.y1 < 100 && touch.x1 >= 160) {
         backspace() 
         is_morse_tap = false
-      } else if (touch.x2 > 280) {
+      } else if (touch.x2 > 270) {
         newline() 
         is_morse_tap = false
       } else {
@@ -413,7 +413,7 @@
             console.log(touch_time, codes.join(""))
           }
           add_morse_letter_timeout = setTimeout( add_morse_letter,
-            letter_spacing);
+            letter_spacing * 2); //can go 6 without hitting word
           //add_morse_word_timeout = setTimeout( add_morse_word , word_spacing)
         } else if (last_touch_was_swipe) {
           y_cursor = Math.floor((touch.pageY - y_offset)/ chr_height)
