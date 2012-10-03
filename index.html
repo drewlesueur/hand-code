@@ -127,6 +127,13 @@
     
   }
 
+  var box = function (x,y,w,h,c) {
+    ctx.save()
+    ctx.fillStyle = c
+    ctx.fillRect(x, y, w, h)
+    ctx.restore()
+  }
+
   var render_raw = function (x_offset, y_offset) {
     // todo: can optimize this to know when it should change
     clear_viewport()
@@ -413,7 +420,7 @@
             console.log(touch_time, codes.join(""))
           }
           add_morse_letter_timeout = setTimeout( add_morse_letter,
-            letter_spacing * 2); //can go 6 without hitting word
+          letter_spacing ); // * 2?
           //add_morse_word_timeout = setTimeout( add_morse_word , word_spacing)
         } else if (last_touch_was_swipe) {
           y_cursor = Math.floor((touch.pageY - y_offset)/ chr_height)
