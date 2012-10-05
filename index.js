@@ -192,6 +192,7 @@ var enter_scroll_mode = function () {
 }
 
 var backspace_timeout
+var cursor_timeout
 var scroll_mode_timeout
 var insert_mode_timeout
 var enter_text = function (text) {
@@ -201,8 +202,17 @@ var enter_text = function (text) {
     // todo: only render at end
    })
 }
+var load = function (p_f) {
+  $.ajax({
+    type:"POST",
+     
+    })
+}
+var save = function () {}
 var commands = {
  i: enter_text
+, s: save
+, l: load
 }
 var command = function() {
  var cmd = prompt("command:")
@@ -214,7 +224,6 @@ var command = function() {
  if (commands[first])
    commands[first](rest)
 }
-var last_touch_was_swipe = false
 var touchstart = function (e) {
   clearTimeout(end_timeout)
   roughes = []
@@ -238,22 +247,24 @@ var touchstart = function (e) {
   if (mode == "scroll" ) {
     clearTimeout(add_morse_letter_timeout)
     clearTimeout(add_morse_word_timeout)
-    if (last_touch_was_swipe ) {
-    } else if (screen_height - touch.y1 < 100 && touch.x1 < 270 && touch.x1 > 50) {
-      add_morse_word()
-      is_morse_tap = false
+    if (screen_height - touch.y1 < 100 && touch.x1 < 270 && touch.x1 > 50) {
+      touch.command = add_morse_word
     } else if (touch.y1 < 100 && touch.x1 < 160) {
-      command()
-      is_morse_tap = false
+      touch.command = function () {
+        _.defer(command)
+      }
     } else if (touch.y1 < 100 && touch.x1 >= 160) {
-      backspace() 
-      is_morse_tap = false
+      touch.command = backspace
     } else if (touch.x2 > 270) {
-      newline() 
-      is_morse_tap = false
+      touch.command = newline
     } else {
-      is_morse_tap = true 
     }
+
+    cursor_timeout = setTimeout(function () {
+      touch.cursor = true
+      move_cursor()
+    }, 400)
+    //
     //insert_mode_timeout = setTimeout(function () {
     //  prevent_insert = true
     //  enter_insert_mode()
@@ -293,9 +304,8 @@ var angle_diff = function (theta, beta) {
 
 var roughes = []
 var touchmove = function  (e) {
-  clearTimeout(insert_mode_timeout)
-  clearTimeout(scroll_mode_timeout)
 
+  clearTimeout(cursor_timeout)
   touch.old_y2 = touch.y2
   touch.old_x2 = touch.x2
 
@@ -305,7 +315,6 @@ var touchmove = function  (e) {
   var y_diff = (touch.y2 - touch.rough_y2)
   var x_diff = (touch.x2 - touch.rough_x2)
   var distance = Math.pow(Math.pow(touch.y2 - touch.rough_y2, 2) + Math.pow(touch.x2 - touch.rough_x2, 2), 0.5)
-  if (distance > 20) last_touch_was_swipe = true
 
   if (mode == "scroll") {
     var temp_x_offset = (x_offset + touch.x2 - touch.x1)
@@ -394,22 +403,45 @@ var input_letter = function (quadrant_path) {
   render()   
 }
 
+var move_cursor = function () {
+
+  y_cursor = Math.floor((touch.pageY - y_offset)/ chr_height)
+  x_cursor = Math.floor((touch.pageX - x_offset)/ chr_width)
+   
+  if (y_cursor >= lines.length) {
+    y_cursor = lines.length - 1;
+  } else if (y_cursor < 0) {
+   y_cursor = 0
+  }
+
+
+  if (x_cursor > lines[y_cursor].length) {
+    x_cursor = lines[y_cursor].length;
+  } else if (x_cursor < 0) {
+    x_cursor = 0 
+  }
+  render()
+}
+
 var touch_time
 var end_timeout
 var touchend = function (e) {
   finger = "up"
-  //clearTimeout(insert_mode_timeout)
-  clearTimeout(scroll_mode_timeout)
   clearInterval(backspace_interval)
   clearTimeout(backspace_timeout)
+  clearTimeout(cursor_timeout)
   if (mode == "backspace") {
     mode = "scroll"
     render()
   } else if (mode == "scroll") {
+    if (touch.cursor) {
+      touch = {}
+      return
+    }
     x_offset = (x_offset + touch.x2 - touch.x1)
     y_offset = (y_offset + touch.y2 - touch.y1)
     if (touch.y2 == touch.y1 && touch.x2 == touch.x1) {
-      if (!last_touch_was_swipe && is_morse_tap) { //maybe only use is_morse_tap
+      if (!touch.command) { 
         touch_time = Date.now() - touch.start
         if (touch_time <= dash_length) {
           codes.push(".")
@@ -421,25 +453,10 @@ var touchend = function (e) {
         add_morse_letter_timeout = setTimeout( add_morse_letter,
         letter_spacing ); // * 2?
         //add_morse_word_timeout = setTimeout( add_morse_word , word_spacing)
-      } else if (last_touch_was_swipe) {
-        y_cursor = Math.floor((touch.pageY - y_offset)/ chr_height)
-        x_cursor = Math.floor((touch.pageX - x_offset)/ chr_width)
-         
-        if (y_cursor >= lines.length) {
-          y_cursor = lines.length - 1;
-        } else if (y_cursor < 0) {
-         y_cursor = 0
-        }
-
-
-        if (x_cursor > lines[y_cursor].length) {
-          x_cursor = lines[y_cursor].length;
-        } else if (x_cursor < 0) {
-          x_cursor = 0 
-        }
+      } else if (touch.command) {
+        touch.command()
       }
       render()   
-      last_touch_was_swipe = false
     }
     touch = {}
   } else if (mode == "insert") {
@@ -517,7 +534,7 @@ var add_morse_letter = function () {
   //render()   
 } 
 
-var dot_length = 40
+var dot_length = 50
 var dash_length = dot_length * 3
 
 var letter_spacing = dot_length * 3 
@@ -553,6 +570,31 @@ var morse_codes = {
   "-..-": "x",
   "-.--": "y",
   "--..": "z"
+  , ".----": 1
+  , "..---": 2
+  , "...--": 3
+  , "....-": 4
+  , ".....": 5
+  , "-....": 6
+  , "--...": 7
+  , "---..": 8
+  , "----.": 9
+  , "-----": "0"
+  , ".-.-.-": "."
+  , "--..--": ","
+  , "..--..": "?"
+  , ".----.": "'"
+  , "-.-.--": "!"
+  , "-..-.": "/"
+  , "-.--.": "("
+  , "-.--.-": ")"
+  , ".-...": "&"
+  , "---...": ":"
+  , "_._._.": ";"
+  , "-...-": "="
+  , ".-.-.": "+"
+  , "": ""
+
 }
 
 $(document).ready(function () {
