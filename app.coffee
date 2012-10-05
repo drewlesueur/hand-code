@@ -8,15 +8,29 @@ async = require("async")
 callbacker = (func) ->
   (args...) ->
     (callback) ->
-      func args..., (err) ->
-        callback err
+      func args..., (args...) ->
+        callback args...
 
 exec = callbacker require('child_process').exec
 write = callbacker require("fs").writeFile
 
 load = (project, file, res) ->
-  exec("cat ../#{project}/#{file}") (err, c) ->
+  command = "cat ../#{project}/#{file}"
+  console.log command
+  exec(command) (err, c) ->
     res.send c
+
+  #async.series [
+  #  exec("cat index.html")
+  #  exec(command),
+  #], (err, results) ->
+  #  [index_page, file] = results
+  #  res.send """
+  #    #{index_page}
+  #    <script>
+  #      lines = text_to_lines(#{JSON.stringify(file)})
+  #    </script>
+  #  """
   
 save = (project, file, content, res) ->
   async.series [
@@ -36,10 +50,11 @@ app.configure () ->
   app.use enableCORS
   app.use express.bodyParser()
   
-app.post "/save/:folder/:file", (req, res) ->
+app.post "/:folder/:file", (req, res) ->
   save req.params.folder, req.params.file, req.body.content, res
 
-app.get "/load/:folder/:file", (req, res) ->
+app.get "/:folder/:file", (req, res) ->
+  console.log req.params.folder, req.params.file
   load req.params.folder, req.params.file, res
 
 app.listen 8500 

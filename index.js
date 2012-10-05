@@ -202,13 +202,40 @@ var enter_text = function (text) {
     // todo: only render at end
    })
 }
-var load = function (p_f) {
-  $.ajax({
-    type:"POST",
-     
-    })
+
+window.onhashchange = function () {
+  load(location.hash.substr(1))
 }
-var save = function () {}
+
+window.onload = function () {
+  load(location.hash.substr(1))
+}
+
+var file = ""
+var load = function (_file) {
+  if (!_file) return
+  file = _file
+  $.get("http://m3.drewl.us:8500/" + file, function (content) {
+    lines = text_to_lines(content)
+    render()
+  })
+}
+
+var save = function () {
+  var content = get_content()
+  $.post("http://m3.drewl.us:8500/" + file, {content: content}, function (content) {
+     
+  })
+}
+
+var get_content = function () {
+  var c = []
+  _.each(lines, function (line) {
+    c.push(line.join(""))  
+  })
+  return c.join("\n")
+}
+
 var commands = {
  i: enter_text
 , s: save
