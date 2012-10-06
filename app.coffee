@@ -38,6 +38,7 @@ save = (project, file, content, res) ->
     write("../#{project}/#{file}", content)
   ], (err) ->
     console.log err
+    console.log "saved"
     res.send "ok"
 
 

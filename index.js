@@ -224,7 +224,7 @@ var load = function (_file) {
 var save = function () {
   var content = get_content()
   $.post("http://m3.drewl.us:8500/" + file, {content: content}, function (content) {
-     
+    alert("seems to have worked")     
   })
 }
 
@@ -235,11 +235,30 @@ var get_content = function () {
   })
   return c.join("\n")
 }
+//todo undo and redot
+
+var find = function (str) {
+  var c = []
+  _.each(lines, function (line, i) {
+    line = line.join("")
+    
+  })
+
+}
+
+var jump = function (nu) {
+  y_offset = - chr_height * (nu - 0)
+  x_offset = 0
+  
+  render()
+}
 
 var commands = {
  i: enter_text
 , s: save
 , l: load
+, f: find
+, j: jump
 }
 var command = function() {
  var cmd = prompt("command:")
@@ -529,8 +548,15 @@ var add_letter = function (letter) {
 var backspace = function () {
   clearTimeout(add_morse_word_timeout)
   console.log("backspace")
-  lines[y_cursor].splice(x_cursor - 1,1)
-  x_cursor -= 1
+  if (x_cursor == 0 && y_cursor == 0) return
+  if (lines[y_cursor].length == 0) {
+    lines.splice(y_cursor, 1)
+    if (y_cursor >= 1) y_cursor -= 1
+    x_cursor = lines[y_cursor].length
+  } else {
+    lines[y_cursor].splice(x_cursor - 1,1)
+    x_cursor -= 1
+  }
   render()
 }
 var newline = function () {
@@ -540,6 +566,16 @@ var newline = function () {
   x_cursor = 0
   render()
 }
+
+var in_control_mode = false
+var old_lines
+var old_x_cursor
+var old_y_cursor
+
+var command_lines = [[]]
+var command_x_cursor = 0
+var command_y_cursor = 0
+
 var add_morse_letter = function () {
   if (finger == "down") return;
   console.log(codes.join(""))
@@ -547,6 +583,14 @@ var add_morse_letter = function () {
   console.log(letter)
   codes = []
   //document.title = letter
+
+  if (in_control_mode) {
+    old_lines = lines
+    old_x_cursor = x_cursor
+    old_y_cursor = y_cursor
+    lines = [[]]
+  }
+
   if (letter == "backspace") {
     return backspace()
   } else if (letter == "AR") {
@@ -554,10 +598,20 @@ var add_morse_letter = function () {
     render()
   } else if (letter == "newline") {
     newline()
+  } else if (letter == "control") {
+    in_control_mode = true
   } else {
     add_letter(letter)
     //letter_queue.push(letter)
   }
+
+  if (in_control_mode) {
+    command_
+    x_cursor = old_x_cursor
+    y_cursor = old_y_cursor
+    old_lines = lines
+  }
+
   //render()   
 } 
 
@@ -571,6 +625,36 @@ var morse_codes = {
   ".-.-" : "newline",
   ".-.-.": "AR",
   "......": "backspace",
+  "---.": "backspace",
+  "----": " ",
+  "..--": "control"
+
+  // not used by me yet
+  , "...-.": ""
+  , "..-..": ""
+  , "..-.-": ""
+  , "..--.": ""
+  , ".-...": ""
+  , ".-..-": ""
+  , ".-.-.": ""
+  , ".-.--": ""
+  , ".--..": ""
+  , ".--.-": ""
+  , ".---.": ""
+  , "-...-": ""
+  , "-..-.": ""
+  , "-..--": ""
+  , "-.-..": ""
+  , "-.-.-": ""
+  , "-.--.": ""
+  , "-.---": ""
+  , "--..-": ""
+  , "--.-.": ""
+  , "--.--": ""
+  , "---.-": ""
+  
+  
+  ,  
   ".-": "a",
   "-...": "b",
   "-.-.": "c",
@@ -617,7 +701,7 @@ var morse_codes = {
   , "-.--.-": ")"
   , ".-...": "&"
   , "---...": ":"
-  , "_._._.": ";"
+  , "-.-.-.": ";"
   , "-...-": "="
   , ".-.-.": "+"
   , "": ""

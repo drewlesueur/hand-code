@@ -5,7 +5,7 @@
 <meta name = "viewport" content = "initial-scale = 1.0">
 <style>
   * {
-    font-family: Courier;
+    font-family:Arial;
     margin: 0; paddig: 0;
   }
   .cursor {
@@ -17,10 +17,11 @@
 <script src="zepto.min.js"></script>
 </head>
 <body style="height:1200px;">
+ 
   <canvas id="c"></canvas>
   <script>
     window.onerror = function (e) {
-     $(document.body).html(e)
+      $(document.body).html(e + "<br>" + e.lineNumber)
     }
   
   </script>
