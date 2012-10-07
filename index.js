@@ -75,7 +75,12 @@ var draw_cursor = function (x_offset, y_offset) {
   var x = (x_offset + chr_width * x_cursor)
   var y = (y_offset + chr_height * y_cursor)
   ctx.save()
-  ctx.fillStyle = "rgba(0,0,255, 0.5)"
+  if (in_control_mode) {
+    ctx.fillStyle = "rgba(0,255,255, 0.5)"
+  } else {
+    ctx.fillStyle = "rgba(0,0,255, 0.5)"
+  }
+
   ctx.fillRect(x,y, chr_width, chr_height)
   ctx.restore()
 }
@@ -86,6 +91,19 @@ var draw_text = function (x_offset, y_offset) {
   var y_start = Math.floor(-y_offset / chr_height)
   var x_start = Math.floor(-x_offset / chr_width)
   // todo maybe cache y_start
+  //
+  //
+
+  if (in_control_mode) {
+    ctx.save()
+    ctx.fillStyle = "rgba(255,0,255,0.5)"
+    var x_control_px = (x_offset + chr_width * x_control_index)
+    var y_control_px = y_offset + chr_height * y_cursor
+    var control_width = (x_cursor - x_control_index) * chr_width
+    ctx.fillRect(x_control_px, y_control_px, control_width, chr_height)
+    ctx.restore()
+  }
+
   var x_px
   var y_px
  
@@ -247,10 +265,28 @@ var find = function (str) {
 }
 
 var jump = function (nu) {
+  nu -= 1
   y_offset = - chr_height * (nu - 0)
   x_offset = 0
   
   render()
+}
+var add = function (ltr) {
+  return function () {
+    add_letter(ltr)
+  } 
+}
+
+var duplicate = function () {
+  lines[y_cursor]
+}
+
+var undo = function () {
+  alert("cant undo yet")
+}
+
+var redo = function () {
+  alert("cant redo yet")
 }
 
 var commands = {
@@ -259,11 +295,30 @@ var commands = {
 , l: load
 , f: find
 , j: jump
+, d: duplicate
+, u: undo
+, r: redo
+, pd: add(".")
+, cm: add(",")
+, lp: add("(")
+, rp: add(")")
+, cl: add(":")
+, eq: add("=")
+, dq: add('"')
+, lc: add("}")
+, us: add("_")
+, ds: add("-")
+
 }
+
 var command = function() {
  var cmd = prompt("command:")
  if (!cmd)
    return
+ raw_command(cmd)
+}
+
+var raw_command = function (cmd) {
  var cmds = cmd.split(" ")
  var first = cmds[0]
  var rest = cmds.slice(1).join(" ")
@@ -363,6 +418,7 @@ var touchmove = function  (e) {
   var distance = Math.pow(Math.pow(touch.y2 - touch.rough_y2, 2) + Math.pow(touch.x2 - touch.rough_x2, 2), 0.5)
 
   if (mode == "scroll") {
+    codes = []
     var temp_x_offset = (x_offset + touch.x2 - touch.x1)
     var temp_y_offset = (y_offset + touch.y2 - touch.y1)
     render_raw(temp_x_offset, temp_y_offset)   
@@ -560,6 +616,9 @@ var backspace = function () {
   render()
 }
 var newline = function () {
+  if (in_control_mode) {
+    return exit_control_mode()
+  }
   clearTimeout(add_morse_word_timeout)
   lines.splice(y_cursor + 1, 0, lines[y_cursor].splice(x_cursor))
   y_cursor += 1
@@ -568,13 +627,19 @@ var newline = function () {
 }
 
 var in_control_mode = false
-var old_lines
-var old_x_cursor
-var old_y_cursor
+var enter_control_mode = function () {
+  in_control_mode = true
+  x_control_index = x_cursor
+  render()
+}
 
-var command_lines = [[]]
-var command_x_cursor = 0
-var command_y_cursor = 0
+var exit_control_mode = function () {
+  in_control_mode = false
+  var cmd = lines[y_cursor].splice(x_control_index, (x_cursor - x_control_index)).join("")
+  x_cursor = x_control_index
+  raw_command(cmd)
+  render()
+}
 
 var add_morse_letter = function () {
   if (finger == "down") return;
@@ -584,32 +649,18 @@ var add_morse_letter = function () {
   codes = []
   //document.title = letter
 
-  if (in_control_mode) {
-    old_lines = lines
-    old_x_cursor = x_cursor
-    old_y_cursor = y_cursor
-    lines = [[]]
-  }
-
   if (letter == "backspace") {
     return backspace()
   } else if (letter == "AR") {
     mode = "scroll"
     render()
   } else if (letter == "newline") {
-    newline()
+      newline()
   } else if (letter == "control") {
-    in_control_mode = true
+    enter_control_mode()
   } else {
     add_letter(letter)
     //letter_queue.push(letter)
-  }
-
-  if (in_control_mode) {
-    command_
-    x_cursor = old_x_cursor
-    y_cursor = old_y_cursor
-    old_lines = lines
   }
 
   //render()   
@@ -706,6 +757,13 @@ var morse_codes = {
   , ".-.-.": "+"
   , "": ""
 
+}
+
+var add_morse_codes = function (ltrs, ltr) {
+  ltrs = ltrs.split("")
+  _.each(ltrs, function (ltr) {
+    
+  })
 }
 
 $(document).ready(function () {
