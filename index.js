@@ -296,7 +296,7 @@ touch_helper.ontouchstart = function (touch) {
   } 
   cursor_timeout = setTimeout(function () {
     touch.cursor = true
-    move_cursor()
+    move_cursor(touch)
   }, 400)
   render()
 }
@@ -313,10 +313,9 @@ touch_helper.onscroll = function (touch) {
 } 
   
 
-var move_cursor = function () {
-
-  y_cursor = Math.floor((touch.pageY - y_offset)/ chr_height)
-  x_cursor = Math.floor((touch.pageX - x_offset)/ chr_width)
+var move_cursor = function (touch) {
+  y_cursor = Math.floor((touch.y2 - y_offset)/ chr_height)
+  x_cursor = Math.floor((touch.x2 - x_offset)/ chr_width)
    
   if (y_cursor >= lines.length) {
     y_cursor = lines.length - 1;
