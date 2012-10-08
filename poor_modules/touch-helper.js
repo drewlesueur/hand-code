@@ -1,4 +1,4 @@
-poorModule("touch-helper", function () {
+ poorModule("touch-helper", function () {
 
   var ret = {}
   var mouse = "up"
@@ -103,8 +103,13 @@ poorModule("touch-helper", function () {
     touch.time = now - touch.last_time
     touch.speed = touch.distance / touch.time
 
-    var change_in_y = touch.speed * touch.y_diff * 2
-    var change_in_x = touch.speed * touch.x_diff * 2
+    var change_in_y = touch.speed * touch.y_diff * 4
+    var change_in_x = touch.speed * touch.x_diff * 1
+    if (change_in_y > change_in_x) {
+      //change_in_x = 0
+    } else {
+      //change_in_y = 0
+    }
     
     ret.ontouchend(touch)
     // todo call onscroll on an interval to handle momentum

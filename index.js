@@ -40,7 +40,7 @@ ctx.textBaseline = "top"
 ctx.font = font_size + "px " + font_name
 
 var tick = function () {
-   
+  
 }
 
 webkitRequestAnimationFrame(tick)
@@ -207,6 +207,31 @@ var get_content = function () {
   })
   return c.join("\n")
 }
+
+var first_letters = {}
+var update_fuzzy = function () {
+  //doing first letter for now
+  // soon make it better at guessing
+  return
+  all_words = get_content().split(" ")
+  _.each(all_words, function (word) {
+    first_letter = word.substr(0,1)
+    collection = first_letters[first_letter]
+    if (!collection) {
+      collection = []
+      first_letters[first_letter] = collection
+    }
+    if (!_.contains(collection, word)) {
+      collection.push(word)
+    }
+  })
+
+   
+
+
+}
+
+
 //todo undo and redot
 
 var find = function (str) {
@@ -243,6 +268,24 @@ var redo = function () {
   alert("cant redo yet")
 }
 
+var zoom_level = 1
+
+var zoom = function (lvl) {
+  
+  var n = 1/zoom_level
+  x_viewport *= 1/n
+  viewport_width *= 1/n
+  viewport_height *= 1/n
+  y_viewport *= 1/n
+  ctx.scale(n,n)
+  zoom_level = lvl
+  ctx.scale(lvl,lvl)
+  x_viewport *= 1/lvl
+  y_viewport *= 1/lvl
+  viewport_width *= 1/lvl
+  viewport_height *= 1/lvl
+  render()
+}
 var commands = {
  i: enter_text
 , s: save
@@ -252,6 +295,7 @@ var commands = {
 , d: duplicate
 , u: undo
 , r: redo
+, z: zoom
 , pd: add(".")
 , cm: add(",")
 , lp: add("(")
@@ -369,6 +413,7 @@ var add_morse_word = function () {
 letter_queue = []
 var add_letter = function (letter) {
   lines[y_cursor].splice(x_cursor, 0, letter)
+  update_fuzzy(letter)
   x_cursor += 1
   if (x_cursor > x_viewport) {
     

@@ -24,7 +24,9 @@
   <canvas id="c"></canvas>
   <script>
     window.onerror = function (e) {
-      $(document.body).html(e + "<br>" + e.lineNumber)
+      //$(document.body).html(e + "<br>" + e.lineNumber)
+      alert(e)
+      return false
     }
   
   </script>
