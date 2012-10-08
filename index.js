@@ -1,3 +1,15 @@
+/*
+ todo
+ fix scrolling after zooming
+ search
+ autocomplete 1 letter
+ fuzzyfind autocomplete
+ saving in nested folders
+ backspace newline
+ 
+ 
+
+*/
 //setTimeout(function () { window.scrollTo(0, 1) }, 100)
 var touch_helper = poorModule("touch-helper")
 var screen_width = 320
@@ -11,13 +23,11 @@ var x_cursor = 0
 var x_offset = 0
 var y_offset = 0
 var viewport_width = 320
-var x_viewport = 16
 
 var viewport_height = 360
 
-var y_viewport = 10
-var chr_width = (viewport_width / x_viewport)
-var chr_height = (viewport_height / y_viewport)
+var chr_width = 20
+var chr_height = 36
 
 var font_size = 35
 var font_name = "Courier"
@@ -72,6 +82,9 @@ var draw_cursor = function (x_offset, y_offset) {
 
 var draw_text = function (x_offset, y_offset) {
   var c_line
+  var x_viewport = viewport_width / chr_width
+  var y_viewport = viewport_height / chr_height
+  
 
   var y_start = Math.floor(-y_offset / chr_height)
   var x_start = Math.floor(-x_offset / chr_width)
@@ -273,15 +286,11 @@ var zoom_level = 1
 var zoom = function (lvl) {
   
   var n = 1/zoom_level
-  x_viewport *= 1/n
   viewport_width *= 1/n
   viewport_height *= 1/n
-  y_viewport *= 1/n
   ctx.scale(n,n)
   zoom_level = lvl
   ctx.scale(lvl,lvl)
-  x_viewport *= 1/lvl
-  y_viewport *= 1/lvl
   viewport_width *= 1/lvl
   viewport_height *= 1/lvl
   render()
@@ -351,15 +360,15 @@ touch_helper.ontouchmove = function (touch) {
 } 
 
 touch_helper.onscroll = function (touch) {
-  x_offset += touch.x_diff
-  y_offset += touch.y_diff
+  x_offset += touch.x_diff / zoom_level
+  y_offset += touch.y_diff / zoom_level
   render()
 } 
   
 
 var move_cursor = function (touch) {
-  y_cursor = Math.floor((touch.y2 - y_offset)/ chr_height)
-  x_cursor = Math.floor((touch.x2 - x_offset)/ chr_width)
+  y_cursor = Math.floor((touch.y2/zoom_level - y_offset)/ chr_height)
+  x_cursor = Math.floor((touch.x2/zoom_level - x_offset)/ chr_width)
    
   if (y_cursor >= lines.length) {
     y_cursor = lines.length - 1;
@@ -415,9 +424,6 @@ var add_letter = function (letter) {
   lines[y_cursor].splice(x_cursor, 0, letter)
   update_fuzzy(letter)
   x_cursor += 1
-  if (x_cursor > x_viewport) {
-    
-  }
   render()
 }
 
@@ -484,7 +490,7 @@ var add_morse_letter = function () {
   //render()   
 } 
 
-var dot_length = 50
+var dot_length = 40
 var dash_length = dot_length * 3
 
 var letter_spacing = dot_length * 3 
