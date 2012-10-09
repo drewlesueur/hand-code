@@ -1,4 +1,5 @@
 /*
+abc,d
  todo
  fix scrolling after zooming
  search
@@ -10,6 +11,7 @@
  
 
 */
+
 //setTimeout(function () { window.scrollTo(0, 1) }, 100)
 var touch_helper = poorModule("touch-helper")
 var screen_width = 320
@@ -247,19 +249,39 @@ var update_fuzzy = function () {
 
 //todo undo and redot
 
+var next = function () {
+  find(find_str)
+}
+var find_str
 var find = function (str) {
-  var c = []
-  _.each(lines, function (line, i) {
-    line = line.join("")
+  find_str = str
+  var i = y_cursor + 1
+  while (i < lines.length) {
+    var line = lines[i].join("")
     
-  })
-
+     
+     var f = line.toLowerCase().indexOf(str)
+     if (f != -1) {
+      
+      y_cursor = i
+      x_cursor = f
+      jump(i + 1)
+      break
+    }
+    i+=1
+  }
 }
 
-var jump = function (nu) {
+var jump_cursor = function () {
+  jump(y_cursor, x_cursor)
+}
+
+var jump = function (nu, x) {
   nu -= 1
-  y_offset = - chr_height * (nu - 0)
-  x_offset = 0
+  x = x || 1
+  x -= 1
+  y_offset = - chr_height * nu
+  x_offset = - chr_width * x
   
   render()
 }
@@ -301,10 +323,12 @@ var commands = {
 , l: load
 , f: find
 , j: jump
+, jc: jump_cursor
 , d: duplicate
 , u: undo
 , r: redo
 , z: zoom
+, n: next
 , pd: add(".")
 , cm: add(",")
 , lp: add("(")
@@ -430,10 +454,13 @@ var add_letter = function (letter) {
 var backspace = function () {
   clearTimeout(add_morse_word_timeout)
   if (x_cursor == 0 && y_cursor == 0) return
-  if (lines[y_cursor].length == 0) {
-    lines.splice(y_cursor, 1)
+  if (x_cursor == 0) {
+    var l = lines.splice(y_cursor, 1)[0]
     if (y_cursor >= 1) y_cursor -= 1
+    prev = lines[y_cursor]
     x_cursor = lines[y_cursor].length
+    prev.splice.apply(prev, [prev.length, 0].concat(l))
+
   } else {
     lines[y_cursor].splice(x_cursor - 1,1)
     x_cursor -= 1
@@ -607,7 +634,7 @@ add_all_morse_codes({
 , ep: "!"
 , as: "@"
 , ca: "@"
-, ns: "#"
+
 , hs: "#"
 , ds: "$"
 , pc: "%"
