@@ -1,5 +1,4 @@
 /*
-abc,d
  todo
  fix scrolling after zooming
  search
@@ -7,9 +6,11 @@ abc,d
  fuzzyfind autocomplete
  saving in nested folders
  backspace newline
- 
- 
-
+ dash dot feedback
+ search wrap around
+ do i cache calculated  variables or do i calculate them every time?
+ sidways view
+ better momentum
 */
 
 //setTimeout(function () { window.scrollTo(0, 1) }, 100)
@@ -317,8 +318,58 @@ var zoom = function (lvl) {
   viewport_height *= 1/lvl
   render()
 }
+zoom(.8)
+
+var y_selection_start;
+var y_selection_end;
+
+var start_selection = function () {
+  y_selection_start = y_cursor     
+}
+
+var end_selection = function () {
+  y_selection_end = y_cursor     
+  copy()
+}
+
+var copied
+var copy = function () {
+  copied = lines.slice(y_selection_start, y_selection_end + 1)
+  copied = JSON.parse(JSON.stringify(copied))
+  // so it deep copies
+}
+
+var copy_line = function () {
+  copied = lines.slice(y_cursor, y_cursor+1) 
+}
+
+var delete_line = function () {
+  copied = lines.splice(y_cursor, 1) 
+}
+
+
+var cut = function () {
+  copied = lines.splice(y_selection_start, y_selection_end - y_selection_start + 1) 
+  render()
+}
+
+var paste = function () {
+  lines.splice.apply(lines, [y_cursor, 0].concat(copied))
+  render()
+}
+
+
+
 var commands = {
  i: enter_text
+, ss: start_selection
+, es: end_selection
+, se: end_selection
+, yy: copy_line
+, dd: delete_line
+, c: copy
+, x: cut
+, p: paste
 , s: save
 , l: load
 , f: find
@@ -338,7 +389,7 @@ var commands = {
 , dq: add('"')
 , lc: add("}")
 , us: add("_")
-, ds: add("-")
+, dh: add("-")
 
 }
 
@@ -370,7 +421,10 @@ touch_helper.ontouchstart = function (touch) {
     touch.command = backspace
   } else if (touch.x2 > 270) {
     touch.command = newline
-  } 
+  } else if (screen_height - touch.y1 < 100 && touch.x1 <= 50) {
+    touch.command = enter_control_mode
+  }
+
   cursor_timeout = setTimeout(function () {
     touch.cursor = true
     move_cursor(touch)
@@ -517,7 +571,7 @@ var add_morse_letter = function () {
   //render()   
 } 
 
-var dot_length = 40
+var dot_length = 50 //40
 var dash_length = dot_length * 3
 
 var letter_spacing = dot_length * 3 
@@ -612,6 +666,7 @@ var morse_codes = {
 
 var reverse_lookup = _.invert(morse_codes) 
 var add_morse_codes = function (ltrs, ltr) {
+  commands[ltrs] = add(ltr)
   ltrs = ltrs.split("")
   var the_codes = []
   _.each(ltrs, function (ltr) {
