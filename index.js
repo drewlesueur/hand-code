@@ -1,7 +1,6 @@
-/*
+/* 
  todo
- fix scrolling after zooming
- search
+ search multiline
  autocomplete 1 letter
  fuzzyfind autocomplete
  saving in nested folders
@@ -11,7 +10,24 @@
  do i cache calculated  variables or do i calculate them every time?
  sidways view
  better momentum
+ gestures for common actions
+ localstorage for copying between tabs
+ tmove to cursor by holding ctrl button
+ undo and redo
+ backspace to get out of command mode at first
+ hold down commad key to go to cursor
+ tabbing in a selection
+ untabbing
+ run a line as a command
+ pasting nothing is a problemt
+ default tab one line
+ when to clear selection
+ indenting when you tab
+ paste in the right order
+ deleting a line should copy it
+ git save
 */
+// var make_box 
 
 //setTimeout(function () { window.scrollTo(0, 1) }, 100)
 var touch_helper = poorModule("touch-helper")
@@ -191,6 +207,7 @@ var enter_text = function (text) {
    })
 }
 
+
 window.onhashchange = function () {
   load(location.hash.substr(1))
 }
@@ -333,19 +350,42 @@ var end_selection = function () {
 }
 
 var copied
+var selection
+
 var copy = function () {
-  copied = lines.slice(y_selection_start, y_selection_end + 1)
-  copied = JSON.parse(JSON.stringify(copied))
+  selection = lines.slice(y_selection_start, y_selection_end + 1)
+  copied = JSON.parse(JSON.stringify(selection))
   // so it deep copies
+  
 }
 
 var copy_line = function () {
-  copied = lines.slice(y_cursor, y_cursor+1) 
+  selection = lines.slice(y_cursor, y_cursor+1) 
+  copied = JSON.parse(JSON.stringify(selection))
+  
 }
 
 var delete_line = function () {
-  copied = lines.splice(y_cursor, 1) 
+  selction = lines.splice(y_cursor, 1)
+  copied = JSON.parse(JSON.stringify(selection))
+  
 }
+
+var tab = function () {
+  _.each(selection, function (line) {
+    line.splice(0, 0, " "," ")
+  })
+  render()
+}
+
+var untab = function () {
+  _.each(selection, function (line) {
+    line.splice(0, 2)
+  })
+  render()
+}
+
+
 
 
 var cut = function () {
@@ -358,15 +398,52 @@ var paste = function () {
   render()
 }
 
+var parens = function () {
+  add_letter("(")
+  add_letter(")")
+  x_cursor -= 1
+  render() // dont need to render
+}
+
+var curlies = function () {
+  add_letter("{")
+  add_letter("}")
+  x_cursor -= 1
+  render() // dont need to render
+}
+
+var brackets = function () {
+  add_letter("[")
+  add_letter("]")
+  x_cursor -= 1
+  render() // dont need to render
+}
+
+var quotes = function () {
+  add_letter("\"")
+  add_letter("\"")
+  x_cursor -= 1
+  render() // dont need to render
+}
+
+
+
 
 
 var commands = {
  i: enter_text
+, t: tab
+, ut: untab
 , ss: start_selection
 , es: end_selection
 , se: end_selection
 , yy: copy_line
 , dd: delete_line
+, ps: parens
+, cs: curlies
+, bks: brackets
+, qs: quotes
+
 , c: copy
 , x: cut
 , p: paste
@@ -421,7 +498,7 @@ touch_helper.ontouchstart = function (touch) {
     touch.command = backspace
   } else if (touch.x2 > 270) {
     touch.command = newline
-  } else if (screen_height - touch.y1 < 100 && touch.x1 <= 50) {
+  } else if (touch.x1 <= 50) {
     touch.command = enter_control_mode
   }
 
@@ -429,6 +506,7 @@ touch_helper.ontouchstart = function (touch) {
     touch.cursor = true
     move_cursor(touch)
   }, 400)
+  
   render()
 }
 
@@ -534,6 +612,11 @@ var newline = function () {
 
 var in_control_mode = false
 var enter_control_mode = function () {
+  if (in_control_mode) {
+    jump_cursor()
+    in_control_mode = false
+    return
+  }
   in_control_mode = true
   x_control_index = x_cursor
   render()
@@ -571,7 +654,7 @@ var add_morse_letter = function () {
   //render()   
 } 
 
-var dot_length = 50 //40
+var dot_length = 45 //40
 var dash_length = dot_length * 3
 
 var letter_spacing = dot_length * 3 

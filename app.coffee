@@ -1,9 +1,12 @@
+
+
+ 
 express = require "express"
 
 app = express()
 
 async = require("async")
-
+path = require("path")
 
 callbacker = (func) ->
   (args...) ->
@@ -14,8 +17,8 @@ callbacker = (func) ->
 exec = callbacker require('child_process').exec
 write = callbacker require("fs").writeFile
 
-load = (project, file, res) ->
-  command = "cat ../#{project}/#{file}"
+load = (pf, res) ->
+  command = "cat ../#{pf}"
   console.log command
   exec(command) (err, c) ->
     res.send c
@@ -32,7 +35,9 @@ load = (project, file, res) ->
   #    </script>
   #  """
   
-save = (project, file, content, res) ->
+save = (pf, content, res) ->
+  project = path.dirname pf
+  file = path.basename pf
   async.series [
     exec("mkdir -p ../#{project}")
     write("../#{project}/#{file}", content)
@@ -51,11 +56,10 @@ app.configure () ->
   app.use enableCORS
   app.use express.bodyParser()
   
-app.post "/:folder/:file", (req, res) ->
-  save req.params.folder, req.params.file, req.body.content, res
+app.post /.*/, (req, res) ->
+  save req._parsedUrl.pathname, req.body.content, res
 
-app.get "/:folder/:file", (req, res) ->
-  console.log req.params.folder, req.params.file
-  load req.params.folder, req.params.file, res
+app.get /.*/, (req, res) ->
+  load req._parsedUrl.pathname, res
 
 app.listen 8500 
