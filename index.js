@@ -25,7 +25,6 @@
  indenting when you tab
  paste in the right order
  deleting a line should copy it
- git save
  tabs and sreens
  pasting twice needs to clone
  remember cursor position on refresh
@@ -358,22 +357,23 @@ var selection
 
 var copy = function () {
   selection = lines.slice(y_selection_start, y_selection_end + 1)
-  copied = JSON.parse(JSON.stringify(selection))
+  copied = clone(selection)
   // so it deep copies
   
 }
 
 var copy_line = function () {
   selection = lines.slice(y_cursor, y_cursor+1) 
-  copied = JSON.parse(JSON.stringify(selection))
+  copied = clone(selection)
   
 }
 
 var delete_line = function () {
-  selction = lines.splice(y_cursor, 1)
-  copied = JSON.parse(JSON.stringify(selection))
+  selection = lines.splice(y_cursor, 1)
+  copied = clone(selection)
   
 }
+
 
 var tab = function () {
   _.each(selection, function (line) {
@@ -397,7 +397,12 @@ var cut = function () {
   render()
 }
 
+var clone = function (x) {
+  return JSON.parse(JSON.stringify(x))
+}
+
 var paste = function () {
+  copied = clone(copied)
   lines.splice.apply(lines, [y_cursor, 0].concat(copied))
   render()
 }
