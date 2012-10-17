@@ -1,6 +1,3 @@
-
-
- 
 express = require "express"
 
 app = express()
@@ -56,8 +53,17 @@ app.configure () ->
   app.use enableCORS
   app.use express.bodyParser()
   
+app.post "/push", (req, res) ->
+  console.log "git push"
+  exec("git add . && git commit -m \"#{req.body.message}\" && git push") (err) ->
+    console.log "done git"
+    console.log err
+    
+    res.send "git save"
+
 app.post /.*/, (req, res) ->
   save req._parsedUrl.pathname, req.body.content, res
+
 
 app.get /.*/, (req, res) ->
   load req._parsedUrl.pathname, res

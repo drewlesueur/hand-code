@@ -26,6 +26,10 @@
  paste in the right order
  deleting a line should copy it
  git save
+ tabs and sreens
+ pasting twice needs to clone
+ remember cursor position on refresh
+ 
 */
 // var make_box 
 
@@ -427,7 +431,12 @@ var quotes = function () {
 }
 
 
-
+var git_push = function(message) {
+  $.post("http://m3.drewl.us:8500/push", {message: message}, function (content) {
+    alert("done pushing" + content)
+  })
+  
+}
 
 
 var commands = {
@@ -443,6 +452,7 @@ var commands = {
 , cs: curlies
 , bks: brackets
 , qs: quotes
+, git: git_push
 
 , c: copy
 , x: cut
