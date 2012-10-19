@@ -3,32 +3,33 @@
  search multiline
  autocomplete 1 letter
  fuzzyfind autocomplete
- saving in nested folders
- backspace newline
  dash dot feedback
  search wrap around
  do i cache calculated  variables or do i calculate them every time?
  sidways view
  better momentum
  gestures for common actions
- localstorage for copying between tabs
- tmove to cursor by holding ctrl button
  undo and redo
  backspace to get out of command mode at first
- hold down commad key to go to cursor
- tabbing in a selection
- untabbing
  run a line as a command
  pasting nothing is a problemt
- default tab one line
+ default tab on new line
  when to clear selection
- indenting when you tab
+ indenting when you newline
  paste in the right order
  deleting a line should copy it
  tabs and sreens
- pasting twice needs to clone
  remember cursor position on refresh
- 
+ colaborative
+ create new files and folders
+ enter bash commands
+ caching problem
+ chompie virtual machine (programming language)
+ simple datastore based on diffs
+ syncing data objects
+ network calls: stream, event, rpc, sync
+ iframe demo of your code
+ swipe from the side
 */
 // var make_box 
 
@@ -44,9 +45,9 @@ var y_cursor = 0
 var x_cursor = 0
 var x_offset = 0
 var y_offset = 0
-var viewport_width = 320
+var viewport_width = screen_width
 
-var viewport_height = 360
+var viewport_height = screen_height
 
 var chr_width = 20
 var chr_height = 36
@@ -70,12 +71,6 @@ var ctx = c[0].getContext("2d")
 ctx.scale(2,2)
 ctx.textBaseline = "top"
 ctx.font = font_size + "px " + font_name
-
-var tick = function () {
-  
-}
-
-webkitRequestAnimationFrame(tick)
 
 
 var clear_viewport = function () {
@@ -149,6 +144,11 @@ var box = function (x,y,w,h,c) {
   ctx.restore()
 }
 
+message = "hi"
+var draw_alert = function () {
+  box(0,0,viewport_width, chr_height, "silver")
+  ctx.fillText(message, 0, 0)
+}
 var render_raw = function (x_offset, y_offset) {
   // todo: can optimize this to know when it should change
   clear_viewport()
@@ -164,6 +164,7 @@ var render_raw = function (x_offset, y_offset) {
 
   draw_cursor(x_offset, y_offset)
   draw_text(x_offset, y_offset)
+  draw_alert()
   var c_line
 }
 
@@ -353,25 +354,32 @@ var end_selection = function () {
 }
 
 var copied
+if (localStorage.copied) {
+  //alert(localStorage.copied)
+  copied = JSON.parse(localStorage.copied)
+}
 var selection
+
+var rawcopy = function () {
+  copied = clone(selection)
+  // so it deep copies
+  localStorage.copied = JSON.stringify(copied)
+
+}
 
 var copy = function () {
   selection = lines.slice(y_selection_start, y_selection_end + 1)
-  copied = clone(selection)
-  // so it deep copies
-  
+  rawcopy()
 }
 
 var copy_line = function () {
-  selection = lines.slice(y_cursor, y_cursor+1) 
-  copied = clone(selection)
-  
+  selection = lines.slice(y_cursor, y_cursor+1)
+  rawcopy()
 }
 
 var delete_line = function () {
   selection = lines.splice(y_cursor, 1)
-  copied = clone(selection)
-  
+  rawcopy()
 }
 
 
@@ -393,7 +401,8 @@ var untab = function () {
 
 
 var cut = function () {
-  copied = lines.splice(y_selection_start, y_selection_end - y_selection_start + 1) 
+  selection = lines.splice(y_selection_start, y_selection_end - y_selection_start + 1) 
+  rawcopy()
   render()
 }
 
@@ -591,6 +600,11 @@ var add_morse_word = function () {
 }
 
 letter_queue = []
+
+var find_matches = function () {
+
+}
+
 var add_letter = function (letter) {
   lines[y_cursor].splice(x_cursor, 0, letter)
   update_fuzzy(letter)
