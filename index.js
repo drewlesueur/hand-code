@@ -2,7 +2,7 @@
  todo
  search multiline
  autocomplete 1 letter
- fuzzyfind autocomplete
+ fuzzyfind autocomplete use regex
  dash dot feedback
  search wrap around
  do i cache calculated  variables or do i calculate them every time?
@@ -28,6 +28,7 @@
  simple datastore based on diffs
  syncing data objects
  network calls: stream, event, rpc, sync
+ tabs as nested arrays might make it easier to sync
  iframe demo of your code
  swipe from the side
 */
@@ -168,7 +169,9 @@ var render_raw = function (x_offset, y_offset) {
   var c_line
 }
 
+var words = {}
 var text_to_lines = function (text) {
+  words = _.countBy(text.split(/\W+/), function (a) {return a})
   var lines = text.split("\n");
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
@@ -246,30 +249,56 @@ var get_content = function () {
 }
 
 var first_letters = {}
-var update_fuzzy = function () {
-  //doing first letter for now
-  // soon make it better at guessing
-  return
-  all_words = get_content().split(" ")
-  _.each(all_words, function (word) {
-    first_letter = word.substr(0,1)
-    collection = first_letters[first_letter]
-    if (!collection) {
-      collection = []
-      first_letters[first_letter] = collection
+
+var get_last_start_word_index = function () {
+  var i = x_cursor;
+  while (i >= 0) {
+    if (lines[y_cursor][i] == " ")  {
+      break;
     }
-    if (!_.contains(collection, word)) {
-      collection.push(word)
-    }
-  })
-
-   
-
-
+    i -= 1
+  }
+  i += 1
+  return i
 }
 
+var get_current_word = function () {
+  var i = get_last_start_word_index()
+  var ret = lines[y_cursor].slice(i, x_cursor + 1).join("")
+  message = ret
+  return ret
+}
 
-//todo undo and redot
+var increment_word_count = function (word) {
+  if (word in words) {
+    words[word] += 1
+  } else {
+    words[word] = 1
+  }
+}
+
+var word_guess = ""
+var update_fuzzy = function (letter) {
+  var current_word = get_current_word()  
+  if (letter == " ") {
+    // todo: this breaks when you manually move your cursor
+    increment_word_count(current_word) 
+  } else {
+    var gap = "(?:.*)"
+    var re_string = gap + current_word.split("").join(gap) + gap
+    message = re_string
+    var current_word_regexp = new RegExp(re_string)
+    for (word in words) {
+      if (word.match(current_word_regexp)) {
+        message = word
+        word_guess = word
+      }
+    }
+    
+  }
+}
+
+//todo undo and redo
 
 var next = function () {
   find(find_str)
@@ -539,10 +568,37 @@ touch_helper.ontouchmove = function (touch) {
   clearTimeout(cursor_timeout)
 } 
 
-touch_helper.onscroll = function (touch) {
-  x_offset += touch.x_diff / zoom_level
-  y_offset += touch.y_diff / zoom_level
+var use_word_guess = function () {
+  var start = get_last_start_word_index()
+  var len = x_cursor - start
+  var current_word = get_current_word()
+  lines[y_cursor].splice.apply(lines[y_cursor], [start, len].concat(word_guess.split("")))
+  x_cursor = x_cursor - current_word.length + word_guess.length
   render()
+}
+
+var scroll_letter_actions = {
+  e: use_word_guess,
+  p: paste 
+
+}
+
+touch_helper.onscroll = function (touch) {
+  if (codes.length) {
+    touch.in_scroll_letter = true
+    var morse_letter = get_morse_letter()
+    var scroll_letter_action = scroll_letter_actions[morse_letter]
+    if (scroll_letter_action) {
+      scroll_letter_action()
+    }
+    codes = []
+  }
+
+  if (!touch.in_scroll_letter) {
+    x_offset += touch.x_diff / zoom_level
+    y_offset += touch.y_diff / zoom_level
+    render()
+  }
 } 
   
 
@@ -623,16 +679,21 @@ var backspace = function () {
     prev.splice.apply(prev, [prev.length, 0].concat(l))
 
   } else {
-    lines[y_cursor].splice(x_cursor - 1,1)
+    var removed = lines[y_cursor].splice(x_cursor - 1,1)
     x_cursor -= 1
   }
   render()
 }
+
 var newline = function () {
   if (in_control_mode) {
     return exit_control_mode()
   }
   clearTimeout(add_morse_word_timeout)
+
+  var word = get_current_word()  
+  increment_word_count(word)
+
   lines.splice(y_cursor + 1, 0, lines[y_cursor].splice(x_cursor))
   y_cursor += 1
   x_cursor = 0
@@ -659,9 +720,13 @@ var exit_control_mode = function () {
   render()
 }
 
+var get_morse_letter = function () {
+  return morse_codes[codes.join("")]
+}
+
 var add_morse_letter = function () {
   if (finger == "down") return;
-  var letter = morse_codes[codes.join("")]
+  var letter = get_morse_letter()
   if (!letter) letter = " "
   codes = []
   //document.title = letter
