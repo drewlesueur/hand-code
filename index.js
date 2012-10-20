@@ -1,4 +1,4 @@
-/*
+/* 
  todo 
  search multiline
  autocomplete 1 letter
@@ -39,8 +39,10 @@
  save as data urls
  an offline version that is just a data url
    save files as javascript urls
+ remember where you last were like ctrl o in vim
+ a log
 */
-// var make_box 
+// var make_box
 
 //setTimeout(function () { window.scrollTo(0, 1) }, 100)
 var touch_helper = poorModule("touch-helper")
@@ -437,6 +439,7 @@ var copy_line = function () {
 var delete_line = function () {
   selection = lines.splice(y_cursor, 1)
   rawcopy()
+  render()
 }
 
 
@@ -631,6 +634,21 @@ var duplicate_line = function () {
   paste()
 }
 
+var goto_top = function () {
+  jump(0,0)
+}
+
+var add_letter = function (letter) {
+  lines[y_cursor].splice(x_cursor, 0, letter)
+  update_fuzzy(letter)
+  x_cursor += 1
+  render()
+}
+var al = function (letter) {
+  return function () {
+    add_letter(letter)
+  }
+}
 var swipe_down_actions = {
   e: use_word_guess,
   p: paste,
@@ -638,19 +656,18 @@ var swipe_down_actions = {
   t: function () {
     enter_control_mode()
   },
-  d: delete_line,
   n: next,
   y: copy_line,
-  l: duplicate_line,
-  s: save
+  d: duplicate_line,
 
 }
 
 var swipe_up_actions = {
-  t: function () {
-    alert("up")
-  }
+  t: goto_top,
+  d: delete_line,
+  s: save
 }
+
 var swipe_left_actions = {
   e: backspace,
   t: function () {
@@ -665,7 +682,12 @@ var swipe_right_actions = {
   },
   t: function () {
     alert("right")
-  }
+  },
+  p: parens,
+  c: al(","),
+  d: al("."),
+  l: al(":"),
+
   
 }
 
@@ -770,12 +792,8 @@ var find_matches = function () {
 
 }
 
-var add_letter = function (letter) {
-  lines[y_cursor].splice(x_cursor, 0, letter)
-  update_fuzzy(letter)
-  x_cursor += 1
-  render()
-}
+
+
 
 var backspace = function () {
   clearTimeout(add_morse_word_timeout)
