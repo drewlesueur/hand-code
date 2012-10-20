@@ -662,10 +662,18 @@ var swipe_down_actions = {
 
 }
 
+var uppercase_letter = function () {
+  letter = lines[y_cursor][x_cursor - 1].toUpperCase()
+  lines[y_cursor][x_cursor-1] = letter
+  render()
+}
+
 var swipe_up_actions = {
   t: goto_top,
   d: delete_line,
-  s: save
+  s: save,
+  y: copy_line,
+  u: uppercase_letter,
 }
 
 var swipe_left_actions = {
@@ -677,17 +685,24 @@ var swipe_left_actions = {
   
 }
 var swipe_right_actions = {
-  e: function () {
-    add_letter(" ")
-  },
-  t: function () {
-    alert("right")
-  },
   p: parens,
-  c: al(","),
-  d: al("."),
-  l: al(":"),
-
+  m: al(","),
+  e: al("."),
+  n: al(":"),
+  h: al("#"),
+  d: al("-"),
+  u: al("_"),
+  g: al(">"),
+  l: al("<"),
+  s: al("'"),
+  i: al("="),
+  a: al("+"),
+  o: al("!"),
+  f: al("/"),
+  
+  q: quotes,
+  b: brackets,
+  c: curlies,
   
 }
 
