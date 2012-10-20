@@ -1,8 +1,7 @@
-/* 
- todo
+/*
+ todo 
  search multiline
  autocomplete 1 letter
- fuzzyfind autocomplete use regex
  dash dot feedback
  search wrap around
  do i cache calculated  variables or do i calculate them every time?
@@ -12,15 +11,15 @@
  undo and redo
  backspace to get out of command mode at first
  run a line as a command
- pasting nothing is a problemt
+ pasting nothing is a problem
  default tab on new line
  when to clear selection
  indenting when you newline
  paste in the right order
  deleting a line should copy it
- tabs and sreens
+ tabs and sreens **
  remember cursor position on refresh
- colaborative
+ collaborative
  create new files and folders
  enter bash commands
  caching problem
@@ -31,6 +30,15 @@
  tabs as nested arrays might make it easier to sync
  iframe demo of your code
  swipe from the side
+ go fullscreen
+ cleanup fuzzy autocomplete
+  should work in middle of word
+ pinch zoom
+ remember zoom value
+ fullscreen web app option
+ save as data urls
+ an offline version that is just a data url
+   save files as javascript urls
 */
 // var make_box 
 
@@ -263,6 +271,7 @@ var get_last_start_word_index = function () {
 }
 
 var get_current_word = function () {
+  // todo make it work in middle of word
   var i = get_last_start_word_index()
   var ret = lines[y_cursor].slice(i, x_cursor + 1).join("")
   message = ret
@@ -277,24 +286,43 @@ var increment_word_count = function (word) {
   }
 }
 
+var toggler = function (list) {
+  var list, togglerIndex;
+  togglerIndex = 0;
+  return function () {
+    var ret;
+    ret = list[togglerIndex];
+    togglerIndex += 1;
+    if (togglerIndex === list.length) togglerIndex = 0;
+    return ret;
+  }
+}
+
 var word_guess = ""
+var word_guesses = []
+var next_guess = function () {}
 var update_fuzzy = function (letter) {
+  word_guesses = []
+  next_guess = function () {}
   var current_word = get_current_word()  
   if (letter == " ") {
     // todo: this breaks when you manually move your cursor
     increment_word_count(current_word) 
-  } else {
+  } else if (current_word.match(/^\w+$/)) {
     var gap = "(?:.*)"
     var re_string = gap + current_word.split("").join(gap) + gap
-    message = re_string
     var current_word_regexp = new RegExp(re_string)
     for (word in words) {
       if (word.match(current_word_regexp)) {
-        message = word
-        word_guess = word
+        word_guesses.push(word)
       }
     }
-    
+    _.sortBy(word_guesses, function(word) {
+      -words[word] 
+    })
+    next_guess = toggler(word_guesses)
+    word_guess = next_guess()
+    message = word_guess
   }
 }
 
@@ -481,6 +509,18 @@ var git_push = function(message) {
   
 }
 
+var export_code = function () {
+  alert( get_content())
+}
+
+var coffee_fn = function () {
+  enter_text("() ->")
+}
+
+var js_fn = function () {
+  enter_text("function () {\n}")
+}
+
 
 var commands = {
  i: enter_text
@@ -496,6 +536,9 @@ var commands = {
 , bks: brackets
 , qs: quotes
 , git: git_push
+, ex: export_code
+, cf: coffee_fn
+, jf: js_fn
 
 , c: copy
 , x: cut
@@ -577,21 +620,87 @@ var use_word_guess = function () {
   render()
 }
 
-var scroll_letter_actions = {
+var do_next_word_guess = function () {
+  word_guess = next_guess()
+  message = word_guess
+  render()
+}
+
+var duplicate_line = function () {
+  copy_line()
+  paste()
+}
+
+var swipe_down_actions = {
   e: use_word_guess,
-  p: paste 
+  p: paste,
+  i: do_next_word_guess,
+  t: function () {
+    enter_control_mode()
+  },
+  d: delete_line,
+  n: next,
+  y: copy_line,
+  l: duplicate_line,
+  s: save
 
 }
+
+var swipe_up_actions = {
+  t: function () {
+    alert("up")
+  }
+}
+var swipe_left_actions = {
+  e: backspace,
+  t: function () {
+    alert("left")
+  }
+  
+  
+}
+var swipe_right_actions = {
+  e: function () {
+    add_letter(" ")
+  },
+  t: function () {
+    alert("right")
+  }
+  
+}
+
+
+var call_swipe_action = function (swipe_actions) {
+  var morse_letter = get_morse_letter()
+  var action = swipe_actions[morse_letter]
+  if (action) {
+    action()
+  }
+  codes = []
+}
+
+touch_helper.onswipeup = function (touch) {
+  call_swipe_action(swipe_up_actions)
+}
+
+touch_helper.onswipedown = function (touch) {
+  call_swipe_action(swipe_down_actions)
+}
+
+touch_helper.onswipeleft = function (touch) {
+  call_swipe_action(swipe_left_actions)
+}
+
+touch_helper.onswiperight = function (touch) {
+  call_swipe_action(swipe_right_actions)
+}
+
+
+
 
 touch_helper.onscroll = function (touch) {
   if (codes.length) {
     touch.in_scroll_letter = true
-    var morse_letter = get_morse_letter()
-    var scroll_letter_action = scroll_letter_actions[morse_letter]
-    if (scroll_letter_action) {
-      scroll_letter_action()
-    }
-    codes = []
   }
 
   if (!touch.in_scroll_letter) {

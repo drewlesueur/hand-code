@@ -1,4 +1,4 @@
- poorModule("touch-helper", function () {
+  poorModule("touch-helper", function () {
 
   var ret = {}
   var mouse = "up"
@@ -79,9 +79,9 @@
 
     var y_diff = (touch.y2 - touch.y1)
     var x_diff = (touch.x2 - touch.x1)
-   // touch.y_total_diff = touch.y2 - touch.y_start
-   // touch.x_total_diff = touch.x2 - touch.x_start
-   // touch.total_distance = Math.pow(Math.pow(touch.y2 - touch.y_start, 2) + Math.pow(touch.x2 - touch.x_start, 2), 0.5)
+    //touch.y_total_diff = touch.y2 - touch.y_start
+    //touch.x_total_diff = touch.x2 - touch.x_start
+    //touch.total_distance = Math.pow(Math.pow(touch.y2 - touch.y_start, 2) + Math.pow(touch.x2 - touch.x_start, 2), 0.5)
     touch.distance = Math.pow(Math.pow(touch.y2 - touch.y1, 2) + Math.pow(touch.x2 - touch.y1, 2), 0.5)
     touch.y_diff = y_diff
     touch.x_diff = x_diff
@@ -109,6 +109,28 @@
       //change_in_x = 0
     } else {
       //change_in_y = 0
+    }
+
+    touch.y_total_diff = touch.y2 - touch.y_start
+    touch.x_total_diff = touch.x2 - touch.x_start
+    touch.total_distance = Math.pow(Math.pow(touch.y2 - touch.y_start, 2) + Math.pow(touch.x2 - touch.x_start, 2), 0.5)
+ 
+    if ( touch.total_distance != 0) {
+      if ( Math.abs(touch.x_total_diff) > Math.abs(touch.y_total_diff)) {
+        if ( touch.x_total_diff > 0) {
+          ret.onswiperight()
+          
+        } else {
+          ret.onswipeleft()
+        }
+      } else {
+        if ( touch.y_total_diff > 0) {
+          ret.onswipedown()
+        } else {
+          ret.onswipeup()
+        }
+        
+      }
     }
     
     ret.ontouchend(touch)
@@ -139,6 +161,10 @@
   ret.ontouchstart = function () {}
   ret.ontouchend = function () {}
   ret.ontouchmove = function () {}
+  ret.onswipeup = function () {}
+  ret.onswipedown = function () {}
+  ret.onswipeleft = function () {}
+  ret.onswiperight = function () {}
   ret.get_touch = function () {
     return touch
   }
