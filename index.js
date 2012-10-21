@@ -890,7 +890,7 @@ var add_morse_letter = function () {
   //render()   
 } 
 
-var dot_length = 45 //40
+var dot_length = 40 //40
 var dash_length = dot_length * 3
 
 var letter_spacing = dot_length * 3 
