@@ -1,7 +1,7 @@
 /* 
- todo 
- search multiline
- autocomplete 1 letter
+ todeo 
+ search emultiline
+ autoceomplete 1 letter
  dash dot feedback
  search wrap around
  do i cache calculated  variables or do i calculate them every time?
@@ -41,12 +41,18 @@
    save files as javascript urls
  remember where you last were like ctrl o in vim
  a log
+ make backspace a button on the bottom right
+ jump to points (links)
+ touch hold and move
+ caching data vs rerendering every time
+ a text option
 */
 // var make_box
 
-//setTimeout(function () { window.scrollTo(0, 1) }, 100)
+
+var start = function (){
 var touch_helper = poorModule("touch-helper")
-var screen_width = 320
+var screen_width = 320 * 1.5
 var screen_height = window.innerHeight
 
 var mode = "scroll"
@@ -639,6 +645,9 @@ var goto_top = function () {
 }
 
 var add_letter = function (letter) {
+  if (letter == "\n") {
+    return newline()
+  }
   lines[y_cursor].splice(x_cursor, 0, letter)
   update_fuzzy(letter)
   x_cursor += 1
@@ -649,6 +658,80 @@ var al = function (letter) {
     add_letter(letter)
   }
 }
+var insert_line = function () {
+  lines.splice(y_cursor + 1, 0, [])
+  y_cursor += 1
+  x_cursor = 0
+  render()
+}
+
+var backspace = function () {
+  clearTimeout(add_morse_word_timeout)
+  if (x_cursor == 0 && y_cursor == 0) return
+  if (x_cursor == 0) {
+    var l = lines.splice(y_cursor, 1)[0]
+    if (y_cursor >= 1) y_cursor -= 1
+    prev = lines[y_cursor]
+    x_cursor = lines[y_cursor].length
+    prev.splice.apply(prev, [prev.length, 0].concat(l))
+
+  } else {
+    var removed = lines[y_cursor].splice(x_cursor - 1,1)
+    x_cursor -= 1
+  }
+  render()
+}
+
+
+
+var input_mode_interval
+var input_box
+var $input_box
+var input_box_length = 0
+var input_mode_tick = function (){
+  var val = $input_box.val()
+  if (val.length < input_box_length) {
+    var to_backspace = input_box_length - val.length
+    for (var i = 0; i < to_backspace; i++) {
+      backspace()
+    }
+    input_box_length = val.length
+    return
+  }
+  var change = val.substr(input_box_length)
+  if (change.length){
+    enter_text(change)
+  }
+  input_box_length = val.length
+}
+
+var input_mode = function () {
+  if ($input_box) {
+    $input_box.remove()
+    $input_box = null
+    input_box_length = 0
+    clearTimeout(input_mode_interval )
+    return
+  }
+  input_box = document.createElement("textarea")
+
+  $input_box = $(input_box)
+  var i = $input_box
+  i.css({
+    position: "absolute",
+    opacity: 0.001,
+    "font-size": "10px",
+    top: "76px",
+    //left: "-50px", //it is a lot slower if you try to move it off screen
+  })
+  i.blur(function (){
+    input_mode()
+  })
+  $(document.body).append(i)
+  input_box.focus()
+  input_mode_interval = setInterval(input_mode_tick, 50)
+}
+
 var swipe_down_actions = {
   e: use_word_guess,
   p: paste,
@@ -659,6 +742,7 @@ var swipe_down_actions = {
   n: next,
   y: copy_line,
   d: duplicate_line,
+  o: insert_line,
 
 }
 
@@ -674,6 +758,7 @@ var swipe_up_actions = {
   s: save,
   y: copy_line,
   u: uppercase_letter,
+  e: input_mode,
 }
 
 var swipe_left_actions = {
@@ -687,7 +772,8 @@ var swipe_left_actions = {
 var swipe_right_actions = {
   p: parens,
   m: al(","),
-  e: al("."),
+  e: al(" "),
+  t: al("."),
   n: al(":"),
   h: al("#"),
   d: al("-"),
@@ -699,6 +785,10 @@ var swipe_right_actions = {
   a: al("+"),
   o: al("!"),
   f: al("/"),
+  newline: function () {
+    x_cursor += 1
+    render()
+  },
   
   q: quotes,
   b: brackets,
@@ -810,22 +900,6 @@ var find_matches = function () {
 
 
 
-var backspace = function () {
-  clearTimeout(add_morse_word_timeout)
-  if (x_cursor == 0 && y_cursor == 0) return
-  if (x_cursor == 0) {
-    var l = lines.splice(y_cursor, 1)[0]
-    if (y_cursor >= 1) y_cursor -= 1
-    prev = lines[y_cursor]
-    x_cursor = lines[y_cursor].length
-    prev.splice.apply(prev, [prev.length, 0].concat(l))
-
-  } else {
-    var removed = lines[y_cursor].splice(x_cursor - 1,1)
-    x_cursor -= 1
-  }
-  render()
-}
 
 var newline = function () {
   if (in_control_mode) {
@@ -900,8 +974,8 @@ var morse_codes = {
   ".-.-" : "newline",
   ".-.-.": "AR",
   "......": "backspace",
-  "---.": "backspace",
-  "----": "control",
+  //"---.": "backspace",
+  //"----": "control",
   "..--": " "
 
   // not used by me yet
@@ -1047,3 +1121,13 @@ add_all_morse_codes({
 var code = ""
 lines = text_to_lines(code)
 render()
+load(location.hash.substr(1))
+
+}
+setTimeout(function () { 
+  window.scrollTo(0, 1)
+  
+  start()
+}, 100)
+
+
