@@ -1,5 +1,5 @@
 /* 
- todeo 
+ todo
  search emultiline
  autoceomplete 1 letter
  dash dot feedback
@@ -595,6 +595,8 @@ touch_helper.ontouchstart = function (touch) {
   clearTimeout(add_morse_word_timeout)
   if (screen_height - touch.y1 < 100 && touch.x1 < 270 && touch.x1 > 50) {
     touch.command = add_morse_word
+  } else if (screen_height - touch.y1 < 100 && (touch.x1 < 50 || touch.x1 > 270)) {
+    touch.command = backspace
   } else if (touch.y1 < 100 && touch.x1 < 160) {
     touch.command = function () {
       _.defer(command)
@@ -732,6 +734,11 @@ var input_mode = function () {
   input_mode_interval = setInterval(input_mode_tick, 50)
 }
 
+var export2 = function () {
+  url = "data:text/html," + encodeURIComponent("<textarea>"+get_content()+"</text"+"area>")
+  window.open(url)
+
+}
 var swipe_down_actions = {
   e: use_word_guess,
   p: paste,
@@ -743,6 +750,7 @@ var swipe_down_actions = {
   y: copy_line,
   d: duplicate_line,
   o: insert_line,
+  s: export2,
 
 }
 
