@@ -104,7 +104,7 @@
     touch.speed = touch.distance / touch.time
 
     var change_in_y = touch.speed * touch.y_diff * 4
-    var change_in_x = touch.speed * touch.x_diff * 1
+    var change_in_x = touch.speed * touch.x_diff * 4
     if (change_in_y > change_in_x) {
       //change_in_x = 0
     } else {

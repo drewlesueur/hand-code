@@ -1,5 +1,6 @@
 /* 
  todo
+ beat based input
  search emultiline
  autoceomplete 1 letter
  dash dot feedback
@@ -49,13 +50,13 @@
 */
 // var make_box
 
-
 var start = function (){
 var touch_helper = poorModule("touch-helper")
 var screen_width = 320 * 1.5
 var screen_height = window.innerHeight
 
 var mode = "scroll"
+//var mode = "beat"
 var line  = []
 var lines = [line]
 var y_cursor = 0
@@ -71,6 +72,7 @@ var chr_height = 36
 
 var font_size = 35
 var font_name = "Courier"
+
 
 var c = $("#c")
 var canvas_width = screen_width
@@ -162,20 +164,77 @@ var box = function (x,y,w,h,c) {
 }
 
 message = "hi"
+alert_color = "silver"
 var draw_alert = function () {
-  box(0,0,viewport_width, chr_height, "silver")
+  box(0,0,viewport_width, chr_height, alert_color)
   ctx.fillText(message, 0, 0)
 }
+
+var bg_color = "rgba(255, 255, 0, 0.1)";
+
+
+var empty_beats = [0,0,0,0,0,0,0,0]
+var beats = _.clone(empty_beats)
+var handle_beat_touch = function () {
+  beats[rounded_beat - 1] = 1
+}
+
+var end_beat = function () {
+  char_code = parseInt(beats.join(""), 2)
+  
+  if (char_code != 0) {
+    // enter_text(char_code.toString(16))
+    add_letter(String.fromCharCode(char_code)) 
+    
+  }
+  beats = _.clone(empty_beats)
+}
+var millis_per_beat = 400 
+
+var half_millis_per_beat = millis_per_beat / 2
+var beats_per_measure = 8
+var millis_per_measure = millis_per_beat * beats_per_measure
+var beat = 0
+var old_beat = 0
+var rounded_beat = 0
+var old_rounded_beat = 0
+
+var draw_beat = function (time) {
+  old_beat = beat
+  old_rounded_beat = rounded_beat
+  beat = Math.floor(time / millis_per_beat) % 8 + 1
+
+  // todo: sometime find a faster way to calculate rounded_beat
+  rounded_beat = Math.floor((time + half_millis_per_beat) / millis_per_beat) % 8 + 1
+  message = beat // + " " + rounded_beat
+  if (old_beat != beat || old_rounded_beat != rounded_beat) {
+    draw_alert()
+    if (beat == 1) {
+      end_beat()
+    } else {
+      alert_color = "silver"
+    }
+
+    if (rounded_beat == 1 && beat == 8) {
+      alert_color = "green"
+    } else {
+      alert_color = "silver"
+    }
+  }
+  webkitRequestAnimationFrame(draw_beat)
+}
+if (mode == "beat")
+webkitRequestAnimationFrame(draw_beat)
+
+
 var render_raw = function (x_offset, y_offset) {
   // todo: can optimize this to know when it should change
   clear_viewport()
 
   ctx.save()
-  if (mode == "scroll") {
-    ctx.fillStyle = "rgba(255, 255, 0, 0.1)";
-  } else {
-    ctx.fillStyle = "rgba(0, 255, 0, 0.1)";
-  }
+  ctx.fillStyle = bg_color
+
+
   ctx.fillRect(0,0,screen_width, screen_height)
   ctx.restore()
 
@@ -223,7 +282,7 @@ var cursor_timeout
 var scroll_mode_timeout
 var insert_mode_timeout
 var enter_text = function (text) {
-  var chars = text.split("")
+  var chars = text.toString().split("")
   _.each(chars, function(chr) {
     add_letter(chr)   
     // todo: only render at end
@@ -572,7 +631,10 @@ var commands = {
 , lc: add("}")
 , us: add("_")
 , dh: add("-")
-
+, beat: function () {
+    mode = "beat"
+    draw_beat()
+  }
 }
 
 var command = function() {
@@ -590,9 +652,7 @@ var raw_command = function (cmd) {
    commands[first](rest)
 }
 
-touch_helper.ontouchstart = function (touch) {
-  clearTimeout(add_morse_letter_timeout)
-  clearTimeout(add_morse_word_timeout)
+var handle_morse_touch = function (touch) {
   if (screen_height - touch.y1 < 100 && touch.x1 < 270 && touch.x1 > 50) {
     touch.command = add_morse_word
   } else if (screen_height - touch.y1 < 100 && (touch.x1 < 50 || touch.x1 > 270)) {
@@ -607,6 +667,18 @@ touch_helper.ontouchstart = function (touch) {
     touch.command = newline
   } else if (touch.x1 <= 50) {
     touch.command = enter_control_mode
+  }
+}
+
+
+touch_helper.ontouchstart = function (touch) {
+  clearTimeout(add_morse_letter_timeout)
+  clearTimeout(add_morse_word_timeout)
+
+  if (mode == "scroll") {
+    handle_morse_touch(touch)
+  } else {
+    handle_beat_touch(touch)
   }
 
   cursor_timeout = setTimeout(function () {
@@ -834,6 +906,10 @@ touch_helper.onswiperight = function (touch) {
 
 
 touch_helper.onscroll = function (touch) {
+  if (mode == "beat") {
+    beats[rounded_beat - 1] = 0
+  }
+
   if (codes.length) {
     touch.in_scroll_letter = true
   }
@@ -870,20 +946,24 @@ var end_timeout
 touch_helper.ontouchend = function (touch) {
   clearTimeout(cursor_timeout)
   if (touch.cursor) { return }
-  if (touch.distance == 0) {
-    if (!touch.command) { 
-      if (touch.time <= dash_length) {
-        codes.push(".")
-      } else { 
-        codes.push("-")
+
+  if (mode == "scroll") {
+    if (touch.distance == 0) {
+      if (!touch.command) { 
+        if (touch.time <= dash_length) {
+          codes.push(".")
+        } else { 
+          codes.push("-")
+        }
+        add_morse_letter_timeout = setTimeout( add_morse_letter,
+        letter_spacing ); // * 2?
+        //add_morse_word_timeout = setTimeout( add_morse_word , word_spacing)
+      } else if (touch.command) {
+        touch.command()
+      
       }
-      add_morse_letter_timeout = setTimeout( add_morse_letter,
-      letter_spacing ); // * 2?
-      //add_morse_word_timeout = setTimeout( add_morse_word , word_spacing)
-    } else if (touch.command) {
-      touch.command()
+      render()   
     }
-    render()   
   }
 } 
 
