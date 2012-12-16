@@ -240,7 +240,7 @@ var render_raw = function (x_offset, y_offset) {
 
   draw_cursor(x_offset, y_offset)
   draw_text(x_offset, y_offset)
-  draw_alert()
+  //draw_alert()
   var c_line
 }
 
@@ -1064,7 +1064,7 @@ var morse_codes = {
   "......": "backspace",
   //"---.": "backspace",
   //"----": "control",
-  "..--": " "
+    "..--": "_"
 
   // not used by me yet
   , "...-.": ""
