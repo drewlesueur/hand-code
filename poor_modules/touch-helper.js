@@ -82,7 +82,7 @@
     //touch.y_total_diff = touch.y2 - touch.y_start
     //touch.x_total_diff = touch.x2 - touch.x_start
     //touch.total_distance = Math.pow(Math.pow(touch.y2 - touch.y_start, 2) + Math.pow(touch.x2 - touch.x_start, 2), 0.5)
-    touch.distance = Math.pow(Math.pow(touch.y2 - touch.y1, 2) + Math.pow(touch.x2 - touch.y1, 2), 0.5)
+    touch.distance = Math.pow(Math.pow(touch.y2 - touch.y1, 2) + Math.pow(touch.x2 - touch.x1, 2), 0.5)
     touch.y_diff = y_diff
     touch.x_diff = x_diff
     ret.onscroll(touch)

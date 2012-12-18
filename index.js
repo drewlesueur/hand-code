@@ -52,10 +52,11 @@
 
 var start = function (){
 var touch_helper = poorModule("touch-helper")
-var screen_width = 320 * 1.5
+var screen_width = 320 // * 1.5
 var screen_height = window.innerHeight
 
-var mode = "scroll"
+var mode = "sides"
+//var mode = "scroll"
 //var mode = "beat"
 var line  = []
 var lines = [line]
@@ -64,12 +65,9 @@ var x_cursor = 0
 var x_offset = 0
 var y_offset = 0
 var viewport_width = screen_width
-
 var viewport_height = screen_height
-
 var chr_width = 20
 var chr_height = 36
-
 var font_size = 35
 var font_name = "Courier"
 
@@ -230,12 +228,16 @@ webkitRequestAnimationFrame(draw_beat)
 var render_raw = function (x_offset, y_offset) {
   // todo: can optimize this to know when it should change
   clear_viewport()
-
+  box(0,0,half_w,half_h,"lightgreen")
+  box(half_w,0,full_w,half_h,"lightblue")
+  box(0,half_h,full_w/8,half_h,"pink")
+  box(full_w*7/8,half_h,full_w,half_h,"lightyellow")
+  
   ctx.save()
   ctx.fillStyle = bg_color
 
 
-  ctx.fillRect(0,0,screen_width, screen_height)
+  //ctx.fillRect(0,0,screen_width, screen_height)
   ctx.restore()
 
   draw_cursor(x_offset, y_offset)
@@ -340,9 +342,17 @@ var get_last_start_word_index = function () {
 var get_current_word = function () {
   // todo make it work in middle of word
   var i = get_last_start_word_index()
-  var ret = lines[y_cursor].slice(i, x_cursor + 1).join("")
+  var ret = lines[y_cursor].slice(i, x_cursor).join("")
   message = ret
   return ret
+}
+
+var delete_current_word = function ( ) {
+  var i = get_last_start_word_index() 
+  var len = x_cursor - i
+  lines[y_cursor].splice(i, len)
+  x_cursor = x_cursor - len
+  render()
 }
 
 var increment_word_count = function (word) {
@@ -450,20 +460,31 @@ var redo = function () {
 }
 
 var zoom_level = 1
+var new_zoom_level = .8
+var half_w
+var full_w
+var half_h
+var full_h
 
 var zoom = function (lvl) {
+  // todo: maybe save and restore here
   
   var n = 1/zoom_level
   viewport_width *= 1/n
   viewport_height *= 1/n
   ctx.scale(n,n)
+  
   zoom_level = lvl
   ctx.scale(lvl,lvl)
   viewport_width *= 1/lvl
   viewport_height *= 1/lvl
+  half_w = viewport_width / 2
+  full_w = viewport_width
+  half_h = viewport_height / 2
+  full_h = viewport_height
   render()
 }
-zoom(.8)
+zoom(new_zoom_level)
 
 var y_selection_start;
 var y_selection_end;
@@ -648,8 +669,10 @@ var raw_command = function (cmd) {
  var cmds = cmd.split(" ")
  var first = cmds[0]
  var rest = cmds.slice(1).join(" ")
- if (commands[first])
+ if (commands[first]) {
    commands[first](rest)
+ }
+
 }
 
 var handle_morse_touch = function (touch) {
@@ -670,6 +693,10 @@ var handle_morse_touch = function (touch) {
   }
 }
 
+var handle_sides_touch = function () {
+
+}
+
 
 touch_helper.ontouchstart = function (touch) {
   clearTimeout(add_morse_letter_timeout)
@@ -677,8 +704,10 @@ touch_helper.ontouchstart = function (touch) {
 
   if (mode == "scroll") {
     handle_morse_touch(touch)
-  } else {
+  } else if (mode == "beat"){
     handle_beat_touch(touch)
+  } else if (mode == "sides") {
+    handle_sides_touch(touch)
   }
 
   cursor_timeout = setTimeout(function () {
@@ -887,18 +916,22 @@ var call_swipe_action = function (swipe_actions) {
 }
 
 touch_helper.onswipeup = function (touch) {
+  if (mode == "scroll")
   call_swipe_action(swipe_up_actions)
 }
 
 touch_helper.onswipedown = function (touch) {
+  if (mode == "scroll")
   call_swipe_action(swipe_down_actions)
 }
 
 touch_helper.onswipeleft = function (touch) {
+  if (mode == "scroll")
   call_swipe_action(swipe_left_actions)
 }
 
 touch_helper.onswiperight = function (touch) {
+  if (mode == "scroll")
   call_swipe_action(swipe_right_actions)
 }
 
@@ -964,6 +997,22 @@ touch_helper.ontouchend = function (touch) {
       }
       render()   
     }
+  } else if (mode == "sides"){
+    //alert(touch.x2 + " " + touch.y2)
+    if (touch.total_distance < 30) {
+      //alert(JSON.stringify(touch))
+      if (touch.x2 < 160 && touch.y2 < (screen_height / 2)) {
+        codes.push(".")
+      } else if (touch.x2 >= 160 && touch.y2 < (screen_height / 2 )) {
+        codes.push("-")
+      } else if (touch.x2 >= (screen_width * 7/8) && touch.y2 > (screen_height / 2 )) {
+        newline()
+      } else if (touch.x2 <= (screen_width * 1/8) && touch.y2 > (screen_height / 2 )) {
+        backspace()
+      } else {
+        add_morse_letter()
+      }
+    }
   }
 } 
 
@@ -1027,21 +1076,18 @@ var exit_control_mode = function () {
 var get_morse_letter = function () {
   return morse_codes[codes.join("")]
 }
-
 var add_morse_letter = function () {
   if (finger == "down") return;
   var letter = get_morse_letter()
   if (!letter) letter = " "
   codes = []
   //document.title = letter
-
-  if (letter == "backspace") {
-    return backspace()
+  // todo: only use letters and functions
+  if (_.isFunction(letter)) {
+    return letter()
   } else if (letter == "AR") {
     mode = "scroll"
     render()
-  } else if (letter == "newline") {
-      newline()
   } else if (letter == "control") {
     enter_control_mode()
   } else {
@@ -1059,11 +1105,16 @@ var letter_spacing = dot_length * 3
 var word_spacing = dot_length * 7 
 var codes = []
 var morse_codes = {
-  ".-.-" : "newline",
+  ".-.-" : newline,
   ".-.-.": "AR",
-  "......": "backspace",
-  //"---.": "backspace",
-  //"----": "control",
+  "......": backspace,
+  "---.": backspace,
+  "----": function () {
+    //alert( get_current_word())
+    var word = get_current_word()
+    delete_current_word()
+    raw_command(word)
+  },
     "..--": "_"
 
   // not used by me yet
@@ -1141,7 +1192,7 @@ var morse_codes = {
   , "-.-.-.": ";"
   , "-...-": "="
   , ".-.-.": "+"
-  , "": ""
+  , "": " "
 
 }
 
@@ -1163,46 +1214,50 @@ var add_all_morse_codes = function (all) {
 }
 
 add_all_morse_codes({
-  lp: "("    
-, rp: ")"
-, tl: "~"
-, bt: "`"
-, ep: "!"
-, as: "@"
-, ca: "@"
+    lp: "("    
+  , rp: ")"
+  , ps: parens
+  , cs: curlies
+  , bb: brackets
+  , uc: uppercase_letter
+  , tl: "~"
+  , bt: "`"
+  , ep: "!"
+  , as: "@"
+  , ca: "@"
 
-, hs: "#"
-, ds: "$"
-, pc: "%"
+  , hs: "#"
+  , ds: "$"
+  , pc: "%"
 
-, cr: "^"
-, ap: "&"
-, as: "*"
-, lp: "("
-, rp: ")"
-, dh: "-"
-, hp: "-"
-, us: "_"
-, pl: "+"
-, eq: "="
-, lb: "["
-, lc: "{"
-, rb: "]"
-, rc: "}"
-, sc: ";"
-, cl: ":"
-, dq: "\""
-, sq: "'"
-, bs: "\\"
-, pp: "|"
-, or: "|"
-, lt: "<"
-, cm: ","
-, grt: ">"
-, pd: "."
-, qm: "?"
-, sl: "/"
-, fs: "/"
+  , cr: "^"
+  , ap: "&"
+  , as: "*"
+  , lp: "("
+  , rp: ")"
+  , dh: "-"
+  , hp: "-"
+  , us: "_"
+  , pl: "+"
+  , eq: "="
+  , lb: "["
+  , lc: "{"
+  , rb: "]"
+  , rc: "}"
+  , sc: ";"
+  , cl: ":"
+  , dq: "\""
+  , sq: "'"
+  , bs: "\\"
+  , pp: "|"
+  , or: "|"
+  , lt: "<"
+  , cm: ","
+  , grt: ">"
+  , pd: "."
+  , qm: "?"
+  , sl: "/"
+  , fs: "/"
 })
 
 
