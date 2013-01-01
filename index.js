@@ -1,5 +1,6 @@
-/* 
+ /* 
  todo
+ indentation and regions based folding
  beat based input
  search emultiline
  autoceomplete 1 letter
@@ -230,8 +231,8 @@ var render_raw = function (x_offset, y_offset) {
   clear_viewport()
   box(0,0,half_w,half_h,"lightgreen")
   box(half_w,0,full_w,half_h,"lightblue")
-  box(0,half_h,full_w/8,half_h,"pink")
-  box(full_w*7/8,half_h,full_w,half_h,"lightyellow")
+  box(0,half_h,full_w/7,half_h,"pink")
+  box(full_w*6/7,half_h,full_w,half_h,"lightyellow")
   
   ctx.save()
   ctx.fillStyle = bg_color
@@ -428,6 +429,7 @@ var find = function (str) {
   }
 }
 
+// goto_cursor
 var jump_cursor = function () {
   jump(y_cursor, x_cursor)
 }
@@ -567,6 +569,13 @@ var parens = function () {
   add_letter(")")
   x_cursor -= 1
   render() // dont need to render
+}
+
+var tags = function () {
+  add_letter("<")
+  add_letter(">")
+  x_cursor -= 1
+  render()
 }
 
 var curlies = function () {
@@ -976,6 +985,7 @@ var move_cursor = function (touch) {
 
 var touch_time
 var end_timeout
+var min_scroll = 30
 touch_helper.ontouchend = function (touch) {
   clearTimeout(cursor_timeout)
   if (touch.cursor) { return }
@@ -999,19 +1009,21 @@ touch_helper.ontouchend = function (touch) {
     }
   } else if (mode == "sides"){
     //alert(touch.x2 + " " + touch.y2)
-    if (touch.total_distance < 30) {
+    if (touch.total_distance < min_scroll) {
       //alert(JSON.stringify(touch))
       if (touch.x2 < 160 && touch.y2 < (screen_height / 2)) {
         codes.push(".")
       } else if (touch.x2 >= 160 && touch.y2 < (screen_height / 2 )) {
         codes.push("-")
-      } else if (touch.x2 >= (screen_width * 7/8) && touch.y2 > (screen_height / 2 )) {
+      } else if (touch.x2 >= (screen_width * 6/7) && touch.y2 > (screen_height / 2 )) {
         newline()
-      } else if (touch.x2 <= (screen_width * 1/8) && touch.y2 > (screen_height / 2 )) {
+      } else if (touch.x2 <= (screen_width * 1/7) && touch.y2 > (screen_height / 2 )) {
         backspace()
       } else {
         add_morse_letter()
       }
+    } else {
+      codes = []
     }
   }
 } 
@@ -1219,7 +1231,22 @@ add_all_morse_codes({
   , ps: parens
   , cs: curlies
   , bb: brackets
+  , lg: tags
   , uc: uppercase_letter
+  , gc: jump_cursor
+  , start: start_selection
+  , end: end_selection
+  , tab: tab
+  , utab: untab
+  , dp: duplicate_line
+  , dl: delete_line
+  , cv: paste
+  , cx: cut
+  , sv: save
+  , qs: quotes
+  , cd: function () {
+    _.defer(command)
+  }
   , tl: "~"
   , bt: "`"
   , ep: "!"
