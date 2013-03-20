@@ -1,5 +1,5 @@
- /* 
- todo
+/*  
+ todo:
  indentation and regions based folding
  beat based input
  search emultiline
@@ -380,6 +380,7 @@ var word_guess = ""
 var word_guesses = []
 var next_guess = function () {}
 var update_fuzzy = function (letter) {
+  return
   word_guesses = []
   next_guess = function () {}
   var current_word = get_current_word()  
@@ -1221,13 +1222,17 @@ var add_morse_codes = function (ltrs, ltr) {
 
 var add_all_morse_codes = function (all) {
   _.each(all, function (value, key) {
-    add_morse_codes(key, value)     
+    add_morse_codes(
+key, value)     
   })
 }
 
+// more more
 add_all_morse_codes({
     lp: "("    
   , rp: ")"
+  , kbd: input_mode
+  , nxt: next
   , ps: parens
   , cs: curlies
   , bb: brackets
