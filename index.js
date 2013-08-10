@@ -1,4 +1,4 @@
-/*  
+  /*  
  todo:
  indentation and regions based folding
  beat based input
@@ -70,7 +70,8 @@ var viewport_height = screen_height
 var chr_width = 20
 var chr_height = 36
 var font_size = 35
-var font_name = "Courier"
+//var font_name = "Courier"
+var font_name = "'Courier New'"
 
 
 var c = $("#c")
